@@ -1,25 +1,11 @@
-mod utils;
+// mod utils;
 extern crate num;
 
 use num::complex::Complex;
 use std::f32;
 use std::f32::consts::PI;
-use wasm_bindgen::prelude::*;
 
-extern crate web_sys;
-macro_rules! log {
-     ($($t:tt)*) => {
-         web_sys::console::log_1(&format!($($t)*).into());
-     };
- }
-
-// When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
-// allocator.
-#[cfg(feature = "wee_alloc")]
-#[global_allocator]
-static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
-
-#[wasm_bindgen]
+#[export_name = "constructor"]
 pub struct Laboratory {
     width: u32,
     height: u32,
@@ -27,6 +13,7 @@ pub struct Laboratory {
     image: Vec<u32>,
 }
 
+#[no_mangle]
 pub fn complex_to_rgba(complex: Complex<f32>) -> u32 {
     // takes psi at an index and computes
     // rgba value via norm -> value
@@ -134,8 +121,8 @@ impl Laboratory {
     }
 }
 
-#[wasm_bindgen]
 impl Laboratory {
+    #[no_mangle]
     pub fn new() -> Laboratory {
         let height: u32 = 200;
         let width: u32 = 200;
@@ -161,6 +148,7 @@ impl Laboratory {
         }
     }
 
+    #[no_mangle]
     pub fn step(&mut self) {
         let mut next = self.psi.clone();
         // normalize the result - if any cells have a non-zero value, count
@@ -180,12 +168,15 @@ impl Laboratory {
         self.psi = next_psi;
     }
 
+    #[no_mangle]
     pub fn image(&self) -> *const u32 {
         self.image.as_ptr()
     }
+    #[no_mangle]
     pub fn width(&self) -> u32 {
         self.width
     }
+    #[no_mangle]
     pub fn height(&self) -> u32 {
         self.height
     }
