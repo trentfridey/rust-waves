@@ -5,5 +5,3 @@ bin/
 pkg/
 wasm-pack.log
 **/node_modules
-.cache
-dist
