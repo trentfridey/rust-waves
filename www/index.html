@@ -25,10 +25,16 @@
       border: 1px solid black;
     }
 
-    #start {
-      margin: auto;
+    button {
+      margin: 10px auto;
+      height: 30px;
+      cursor: pointer;
       border: 1px solid black;
       width: 100px;
+      display: inline-block;
+    }
+    input[type="checkbox"] {
+      margin: auto
     }
   </style>
 </head>
@@ -37,6 +43,13 @@
   <div class="container">
     <canvas id="canvas" width="200" height="200"></canvas>
     <button type="button" id="start">Start</button>
+    <button type="button" id="step">Step</button>
+    <label for="debug">
+      <input type="checkbox" id="debug"/> Debug mode
+    </label>
+    <label>
+      <input type="checkbox" id="view"/> Intensity only
+    </label>
   </div>
   <noscript>This page contains webassembly and javascript content, please enable javascript in your browser.</noscript>
   <script src="./bootstrap.js"></script>
