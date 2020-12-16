@@ -17,51 +17,26 @@ use wasm_bindgen_test::*;
 wasm_bindgen_test_configure!(run_in_browser);
 
 #[wasm_bindgen_test]
-fn test_step() {
-    let mut input_state = input_lab();
-    let expected_state = expected_lab();
-    input_state.step();
-    for (input_psi, expected_psi) in input_state
+fn test_step_stability() {
+    let mut numerical = Laboratory::new();
+    let mut analytical = Laboratory::new();
+    for (numerical_psi, analytical_psi) in numerical
         .get_psi()
         .into_iter()
-        .zip(expected_state.get_psi().into_iter())
+        .zip(analytical.get_psi().into_iter()){
+            assert_eq!(numerical_psi, analytical_psi)
+        }
+    numerical.step();
+    analytical.exact_step();
+    const EPSILON: f32 = 1e-6;
+    for (numerical_psi, analytical_psi) in numerical
+        .get_psi()
+        .into_iter()
+        .zip(analytical.get_psi().into_iter())
     {
-        assert_eq!(input_psi, expected_psi)
+        assert!((numerical_psi.re - analytical_psi.re) < EPSILON, "{} - {}", numerical_psi.re, analytical_psi.re);
+        assert!((numerical_psi.im - analytical_psi.im) < EPSILON, "{}i - {}i", numerical_psi.im, analytical_psi.im);
     }
-}
-
-#[cfg(test)]
-pub fn input_lab() -> Laboratory {
-    // delta function spike at (x,y) = (50, 50)
-    let mut lab = Laboratory::new();
-    lab.delta_psi(&(50, 50));
-    lab
-}
-
-#[cfg(test)]
-pub fn expected_lab() -> Laboratory {
-    /**
-     * Stencil of evolution:
-     *
-     * Real
-     *  0      -im      0
-     *  -im   re+4im   -im
-     *  0      -im      0
-     *
-     * Imaginary
-     *  0       re      0
-     *  re   -4re-im    re
-     *  0       re      0
-     */
-    let mut lab = Laboratory::new();
-    lab.set_psi(&[
-        (50, 49, Complex { re: 0.0, im: 1.0 }),
-        (50, 51, Complex { re: 0.0, im: 1.0 }),
-        (49, 50, Complex { re: 0.0, im: 1.0 }),
-        (51, 50, Complex { re: 0.0, im: 1.0 }),
-        (50, 50, Complex { re: 1.0, im: -4.0 }),
-    ]);
-    lab
 }
 
 // #[wasm_bindgen_test]
