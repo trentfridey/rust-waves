@@ -1,9 +1,6 @@
 mod utils;
 extern crate num;
 
-use num::complex::Complex;
-use std::f32;
-use std::f32::consts::PI;
 use wasm_bindgen::prelude::*;
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
@@ -12,169 +9,148 @@ use wasm_bindgen::prelude::*;
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
+const ALPHA: u32 = 0xFF000000;
+
+const DEFAULT: u8 = 0;
+const WALL: u8 = 1;
+const PTRANSMITTER: u8 = 2;
+const NTRANSMITTER: u8 = 3;
+const FORCE_DAMPING_BIT_SHIFT: u8 = 4;
+
 #[wasm_bindgen]
-pub struct Laboratory {
+pub struct Arena {
     width: u32,
     height: u32,
-    psi: Vec<Complex<f32>>,
+    u: Vec<i32>,
+    v: Vec<i32>,
+    force: Vec<i32>,
     image: Vec<u32>,
+    status: Vec<u8>,
 }
 
-#[no_mangle]
-pub fn complex_to_rgba(complex: Complex<f32>) -> u32 {
-    // takes psi at an index and computes
-    // rgba value via norm -> value
-    // and            phase -> hue
-    // returns rgba value as a u32, i.e., 0xRRGGBBAA
-    let value = complex.norm(); // range (0, 1)
-    let hue = complex.arg(); // arg() uses atan2 to return angle in radians. range is (-PI, PI]
-    let theta = if hue < 0.0 {
-        hue * (180.0 / PI) + 360.0
+pub fn applyCap(x: i32) -> i32 {
+    if x < i32::MIN >> 1 {
+        return i32::MIN >> 1;
+    } else if x > i32::MAX >> 1 {
+        return i32::MAX >> 1;
     } else {
-        (hue) * (180.0 / PI)
-    };
-
-    let red = {
-        if 0.0 <= theta && theta <= 60.0 {
-            value
-        } else if 60.0 < theta && theta <= 120.0 {
-            value * (120.0 - theta) / 60.0
-        } else if 240.0 < theta && theta <= 300.0 {
-            value * (theta - 240.0) / 60.0
-        } else if 300.0 < theta && theta <= 360.0 {
-            value
-        } else {
-            0.0
-        }
-    };
-
-    let green = {
-        if 0.0 < theta && theta <= 60.0 {
-            value * (theta) / 60.0
-        } else if 60.0 < theta && theta <= 180.0 {
-            value
-        } else if 180.0 < theta && theta <= 240.0 {
-            value * (240.0 - theta) / 60.0
-        } else {
-            0.0
-        }
-    };
-
-    let blue = {
-        if 120.0 < theta && theta <= 180.0 {
-            value * (theta - 120.0) / 60.0
-        } else if 180.0 < theta && theta <= 300.0 {
-            value
-        } else if 300.0 < theta && theta <= 360.0 {
-            value * (360.0 - theta) / 60.0
-        } else {
-            0.0
-        }
-    };
-
-    let (r, g, b) = (red * 255.0, green * 255.0, blue * 255.0);
-    return 0xff000000 | ((b as u32) << 16) | ((g as u32) << 8) | (r as u32);
-}
-
-impl Laboratory {
-    fn get_index(&self, row: u32, col: u32) -> usize {
-        (row * self.width + col) as usize
-    }
-
-    fn psi_evolve(&self, row: u32, col: u32) -> Complex<f32> {
-        // finite difference algorithm
-        // computes psi_next a the point specified by row, col
-        // using a spatial stencil:
-        // [[0,1,0],[1,-4,1],[0,1,0]]
-        // We also implement Neumann boundary conditions by modifiying the
-        // stencil to enable reflections. For example, on the left wall the
-        // stencil becomes: [[0,1,0],[0,-4,2],[0,1,0]]
-        let mut psi_next = Complex { im: 0.0, re: 0.0 };
-        let idx = self.get_index(row, col);
-        let psi_ctr = self.psi[idx];
-        let psi_neighbors = if col == 0 && row != 0 && row != self.height { 
-            // left wall
-                self.psi[self.get_index(row - 1, col)]
-                + self.psi[self.get_index(row + 1, col)]
-                + 2.0 * self.psi[self.get_index(row, col + 1)]
-            } else if col == self.width && row != 0 && row != self.height {
-                // right wall
-                   self.psi[self.get_index(row - 1, col)]
-                   + 2.0 * self.psi[self.get_index(row, col - 1)]
-                   + self.psi[self.get_index(row + 1, col)]
-            } else if row == 0 && col != 0 && col != self.width {
-                // top wall
-                    self.psi[self.get_index(row, col - 1)]
-                    + 2.0 * self.psi[self.get_index(row + 1, col)]
-                    + self.psi[self.get_index(row, col + 1)]
-            } else if row == self.height && col != 0 && col != self.width {
-                // bottom wall
-                   2.0 * self.psi[self.get_index(row - 1, col)]
-                   + self.psi[self.get_index(row, col - 1)]
-                   + self.psi[self.get_index(row, col + 1)]
-            } else {
-                // default
-                    self.psi[self.get_index(row - 1, col)]
-                    + self.psi[self.get_index(row, col - 1)]
-                    + self.psi[self.get_index(row + 1, col)]
-                    + self.psi[self.get_index(row, col + 1)]
-            };
-        psi_next.re = -1.0 * (psi_neighbors.im - 4.0 * psi_ctr.im - psi_ctr.re);
-        psi_next.im = psi_neighbors.re - 4.0 * psi_ctr.re - psi_ctr.im;
-        return psi_next;
+        return x;
     }
 }
+
+pub fn toRGB(x: i32) -> u32 {
+    let mut val: i32 = x >> 22;
+    if val > 0 {
+        let res = val as u32;
+        return ((res << 8) | (res << 16) | ALPHA);
+    } else {
+        val = std::cmp::max(val, -255i32);
+        return (-1i32 * val) as u32 | ALPHA;
+    }
+}
+
 #[wasm_bindgen]
-impl Laboratory {
+impl Arena {
     #[no_mangle]
-    pub fn new() -> Laboratory {
-        let height: u32 = 200;
+    pub fn new() -> Arena {
+        console_error_panic_hook::set_once();
         let width: u32 = 200;
-
-        let psi_0: Vec<Complex<f32>> = (0..width * height)
-            .map(|idx| {
-                if idx >= 200 && idx < 400 {
-                    Complex { re: 0.01, im: 0.0 }
-                } else {
-                    Complex { re: 0.0, im: 0.0 }
-                }
-            })
-            .collect();
-        let image_0 = psi_0
-            .iter()
-            .map(|&complex| complex_to_rgba(complex))
-            .collect();
-        Laboratory {
-            height,
-            width,
-            psi: psi_0,
-            image: image_0,
+        let height: u32 = 200;
+        let w: usize = width as usize;
+        let h: usize = height as usize;
+        let mut status = vec![DEFAULT; w * h]; 
+        let mut u_0: Vec<i32> = vec![0; w*h]; 
+        // Draw walls along the outer boundary
+        for i in 0..h {
+            status[i * w] = WALL;
+            status[i * w + w - 1] = WALL;
         }
-    }
+        for j in 0..w {
+            status[j] = WALL;
+            status[w * h - w + j] = WALL;
+        }
 
-    #[no_mangle]
-    pub fn step(&mut self) {
-        let mut next = self.psi.clone();
-        // normalize the result - if any cells have a non-zero value, count
-        // let mut count = 0.0;
-
-        for row in 0..self.height {
-            for col in 0..self.width {
-                let idx = self.get_index(row, col);
-                next[idx] = self.psi_evolve(row, col);
-                // if next[idx].norm() > 0.0 {
-                //     count += 1.0
-                // };
+        for i in 0..w {
+            for j in 0..h {
+                if i > 50 && j > 50 && i < 100 && j < 100 {
+                    u_0[j*w + i] = 0x3fffffff
+                }
             }
         }
-        let next_psi: Vec<Complex<f32>> = next.into_iter().map(|c| c).collect();
-        self.image = next_psi.iter().map(|&c| complex_to_rgba(c)).collect();
-        self.psi = next_psi;
+            
+       
+        let v_0: Vec<i32> = vec![0; w*h]; 
+        let force_0: Vec<i32> = vec![0; w*h];
+
+        let image_0: Vec<u32> = u_0.iter().map(|&x| {toRGB(applyCap(x))}).collect(); 
+        return Arena {
+            height,
+            width,
+            image: image_0,
+            u: u_0,
+            v: v_0,
+            force: force_0,
+            status,
+        };
     }
 
+    #[no_mangle]
+    pub fn step(&mut self, signalAmplitude: i32, dampingBitShift: u8) {
+        // First loop: look for noise generator pixels and set their values in u:
+        let w = self.width as usize;
+        let h = self.height as usize;
+        for i in (0..w * h) {
+            if self.status[i] == PTRANSMITTER {
+                self.u[i] = signalAmplitude;
+                self.v[i] = 0;
+                self.force[i] = 0;
+            }
+            if self.status[i] == NTRANSMITTER {
+                self.u[i] = -signalAmplitude;
+                self.v[i] = 0;
+                self.force[i] = 0;
+            }
+        }
+        // Second loop: apply wave equation at all pixels
+        for i in (0..w * h) {
+            if self.status[i] == DEFAULT {
+                let uCen = self.u[i];
+                let uNorth = self.u[i - w];
+                let uSouth = self.u[i + w];
+                let uEast = self.u[i + 1];
+                let uWest = self.u[i - 1];
+                let uxx = ((uWest + uEast) >> 1) - uCen;
+                let uyy = ((uNorth + uSouth) >> 1) - uCen;
+                let mut vel = self.v[i] + (uxx >> 1) + (uyy >> 1);
+                if dampingBitShift > 0 {
+                    vel -= (vel >> dampingBitShift);
+                }
+                self.v[i] = applyCap(vel);
+            }
+        }
+
+        // Apply forces from the mouse:
+        for i in 0..w * h {
+            if self.status[i] == DEFAULT {
+                let mut f = self.force[i];
+                self.u[i] = applyCap(f + applyCap(self.u[i] + self.v[i]));
+                f -= (f >> FORCE_DAMPING_BIT_SHIFT);
+                self.force[i] = f;
+            }
+            if self.status[i] == WALL {
+                self.image[i] = 0x00000000;
+            } else {
+                self.image[i] = toRGB(self.u[i]);
+            }
+        }
+    }
     #[no_mangle]
     pub fn image(&self) -> *const u32 {
         self.image.as_ptr()
+    }
+    #[no_mangle]
+    pub fn force(&self) -> *const i32 {
+        self.force.as_ptr()
     }
     #[no_mangle]
     pub fn width(&self) -> u32 {
@@ -183,23 +159,5 @@ impl Laboratory {
     #[no_mangle]
     pub fn height(&self) -> u32 {
         self.height
-    }
-}
-
-impl Laboratory {
-    pub fn get_psi(&self) -> &[Complex<f32>] {
-        &self.psi
-    }
-
-    pub fn set_psi(&mut self, psi: &[(u32, u32, Complex<f32>)]) {
-        for point in psi.iter() {
-            let idx = self.get_index(point.0, point.1);
-            self.psi[idx] = point.2
-        }
-    }
-
-    pub fn delta_psi(&mut self, point: &(u32, u32)) {
-        let idx = self.get_index(point.0, point.1);
-        self.psi[idx] = Complex { re: 1.0, im: 0.0 }
     }
 }
