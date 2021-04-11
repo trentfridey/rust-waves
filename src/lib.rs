@@ -9,7 +9,7 @@ use wasm_bindgen::prelude::*;
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
-const ALPHA: u32 = 0xFF000000;
+const ALPHA: u32 = 0xFF_00_00_00;
 
 #[derive(Clone)]
 enum Status {
