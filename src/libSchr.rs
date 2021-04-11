@@ -12,13 +12,30 @@ use wasm_bindgen::prelude::*;
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
+const ALPHA: u32 = 0xFF_00_00_00; 
+
+#[derive(Clone)]
+enum Status {
+    Default,
+    Wall
+}
+
 #[wasm_bindgen]
 pub struct Laboratory {
     width: u32,
     height: u32,
     psi: Vec<Complex<i32>>,
     image: Vec<u32>,
+    status: Vec<Status>,
     t: u64
+}
+
+trait HexColor {
+    fn to_rgb(self) -> u32;
+}
+
+impl HexColor for Complex<i32> {
+
 }
 
 #[no_mangle]
