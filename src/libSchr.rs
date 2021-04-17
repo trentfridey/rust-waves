@@ -31,72 +31,44 @@ pub struct Laboratory {
 }
 
 trait HexColor {
-    fn to_rgb(self) -> u32;
+    fn to_rgba(self) -> u32;
 }
 
 impl HexColor for Complex<i32> {
-
+    // This should map the amplitude and phase represented by the Complex<i32>
+    // to a color.
+    // The most straightforward way would map the phase to the hue, so we use HSV, and then convert to RGB.
+    // Since HSV is 3D, but the Complex<i32> is two dimensional, we set the saturation value to 1
+    // This constrains the space to the surface of a cone: the radial angle is the hue, and the height
+    // is the value, with the point of the cone corresponding to black.
+    fn to_rgba(self) -> u32 {
+        let hue = self.arg(); // should this cast an i32 to a float?
+        let value = self.norm(); // should this also cast to a float?
+        let (r,g,b) = hsv_to_rgb(hue, 1, value);
+        return ALPHA | r << 16 | g << 8 | b
+    } 
 }
 
-#[no_mangle]
-pub fn complex_to_rgba(complex: Complex<i32>, intensity_only: bool) -> u32 {
-    // maps complex float to HSV 
-    // if intensityOnly is true, then just map norm squared to HSV
-    // rgba value via norm -> value
-    // and            phase -> hue
-    // returns rgba value as a u32, i.e., 0xRRGGBBAA
-    // TODO: add toggle for intensity_only to be set on front end
-    // TODO: why does this look blue when it renders?
-    let value = complex.re.abs(); 
-    return 0xff000000 | (value as u32) << 0x10 | (value as u32) << 0x08 | (value as u32)
-    // TODO: refactor below to use fixed-point
-    // let hue = complex.arg(); // arg() uses atan2 to return angle in radians. range is (-PI, PI]
-    // let theta = if hue < 0.0 {
-    //     hue * (180.0 / PI) + 360.0
-    // } else {
-    //     (hue) * (180.0 / PI)
-    // };
-
-    // let red = {
-    //     if 0.0 <= theta && theta <= 60.0 {
-    //         value
-    //     } else if 60.0 < theta && theta <= 120.0 {
-    //         value * (120.0 - theta) / 60.0
-    //     } else if 240.0 < theta && theta <= 300.0 {
-    //         value * (theta - 240.0) / 60.0
-    //     } else if 300.0 < theta && theta <= 360.0 {
-    //         value
-    //     } else {
-    //         0.0
-    //     }
-    // };
-
-    // let green = {
-    //     if 0.0 < theta && theta <= 60.0 {
-    //         value * (theta) / 60.0
-    //     } else if 60.0 < theta && theta <= 180.0 {
-    //         value
-    //     } else if 180.0 < theta && theta <= 240.0 {
-    //         value * (240.0 - theta) / 60.0
-    //     } else {
-    //         0.0
-    //     }
-    // };
-
-    // let blue = {
-    //     if 120.0 < theta && theta <= 180.0 {
-    //         value * (theta - 120.0) / 60.0
-    //     } else if 180.0 < theta && theta <= 300.0 {
-    //         value
-    //     } else if 300.0 < theta && theta <= 360.0 {
-    //         value * (360.0 - theta) / 60.0
-    //     } else {
-    //         0.0
-    //     }
-    // };
-
-    // let (r, g, b) = (red * 255.0, green * 255.0, blue * 255.0);
-    // return 0xff000000 | ((b as u32) << 16) | ((g as u32) << 8) | (r as u32);
+pub fn hsv_to_rgb((hue, sat, val): (u32, u32, u32)) -> (u8, u8, u8) {
+    // TODO: test return types
+    // based on algorithm from https://en.wikipedia.org/wiki/HSL_and_HSV
+    // assume H in [0,360], S in [0,1], V in [0,1]
+    let chroma: u8 = sat * val;  // chance of overflow?
+    let hue_div: u32 = hue / 60; // this should return a float in [0,6] 
+                                 // for matching
+    const x: u8 = chroma * (1-((hue_div % 2) - 1).abs()); // this should be u8
+    let (r1, g1, b1) = match hue_div {
+        h if h < 1 => (chroma, x, 0),
+        h if h < 2 => (x, chroma, 0),
+        h if h < 3 => (0, chroma, x),
+        h if h < 4 => (0, x, chroma),
+        h if h < 5 => (x, 0, chroma),
+        h if h < 6 => (chroma, 0, x),
+        _ => (0,0,0)
+    };
+    const m: u32 = val - chroma;
+    let (r,g,b) = (r1+m, g1+m, b1+m);
+    return (r,g,b);
 }
 
 impl Laboratory {
@@ -163,8 +135,24 @@ impl Laboratory {
     pub fn new() -> Laboratory {
         console_error_panic_hook::set_once();
 
-        let height: u32 = 200;
         let width: u32 = 200;
+        let height: u32 = 200;
+
+        let w: usize = width as usize;
+        let h: usize = height as usize;
+
+        let mut status = vec![Status::Default; w * h];
+        let mut psi_0: Vec<Complex<i32>> = vec![0; w * h];
+
+        for i in 0..h {
+            status[i * w] = Status::Wall;
+            status[i * w + w - 1] = Status::Wall;
+        }
+        // top and bottom walls
+        for j in 0..w {
+            status[j] = Status::Wall;
+            status[w * h - w + j] = Status::Wall;
+        }
 
         let psi_0: Vec<Complex<i32>> = (0..width * height)
             .map(|idx| {
@@ -192,39 +180,20 @@ impl Laboratory {
     #[no_mangle]
     pub fn step(&mut self) {
         let mut next = self.psi.clone();
-        // TODO: normalize the result - if any cells have a non-zero value, count
-        let mut count: i32 = 0;
-        for row in 0..self.height {
-            for col in 0..self.width {
-                let idx = self.get_index(row, col);
-                next[idx] = self.clamp(self.psi_evolve(row, col));
-                if next[idx].re > 0 || next[idx].im > 0 { count += 1 }
+        let w = self.width as usize;
+        let h = self.height as usize;
+        for row in 0..w * h {
+            match self.status[i] {
+                Status::Default => {
+                    // TODO: implement psi-evolve
+                },
+                _ => {}
             }
         }
-        // let next_psi = next.iter().collect();
         let next_psi: Vec<Complex<i32>> = next.into_iter().map(|p| Complex{re: p.re/count, im: p.im/count}).collect::<Vec<Complex<i32>>>();
-        self.image = next_psi.iter().map(|&c| complex_to_rgba(c, false)).collect();
+        self.image = next_psi.iter().map(|&c| c.to_rgba()).collect();
         self.psi = next_psi;
     }
-
-    // TODO: remove float-based code
-    // #[no_mangle]
-    // pub fn exact_step(&mut self) {
-    //     let a: f32 = 0.01;
-    //     let t = self.t as f32;
-    //     let next_psi: Vec<Complex<f32>> = (0..self.width*self.height)
-    //     .map(|idx|{
-    //         let x: f32 = (idx % self.width) as f32 - ((self.width / 2) as f32);
-    //         let y: f32 = (idx / self.width) as f32 - ((self.height / 2) as f32);
-    //         let w: f32 = a*x*x + a*y*y;
-    //         let s: f32 = 1.0 + 4.0*t*t*a*a;
-    //         return Complex { re: 1.0/s * (-w/s).exp() * (2.0*t*a*w/s).cos(), im: (1.0/s * (-w/s).exp() * (2.0*t*a*w/s).sin()) };
-    //     })
-    //     .collect();
-    //     self.t = (t + 1.0) as u64;
-    //     self.image = next_psi.iter().map(|&c| complex_to_rgba(c, false)).collect();
-    //     self.psi = next_psi;
-    // }
 
     #[no_mangle]
     pub fn image(&self) -> *const u32 {
