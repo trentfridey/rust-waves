@@ -1,4 +1,4 @@
-import { Laboratory } from 'rust-waves'; 
+import { Laboratory } from '../crate/Cargo.toml'; 
 
 const lab = Laboratory.new();
 const width = lab.width();

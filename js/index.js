@@ -1,5 +1,4 @@
-import { memory } from 'rust-waves/rust_waves_bg';
-import { Arena } from 'rust-waves';
+import { memory, Arena } from '../crate/Cargo.toml' // This might be incorrect
 
 const arena = Arena.new();
 const width = arena.width();

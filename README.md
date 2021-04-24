@@ -6,14 +6,15 @@ Inspired by [jtiscione/webassembly-wave](https://github.com/jtiscione/webassembl
 
 ## Running Locally
 
-1. Build with `wasm-pack build`
-2. `cd www/`
-3. `npm start`
+1. npm run start
 
 ## TODOs:
 
+- [x] Find way to live-reload on Rust changes (using [rust-parcel-template](https://github.com/rustwasm/rust-parcel-template))
+
 Rust:
 - [ ] test `hsv_to_rgb` function and return types
+  - [ ] plot colors for each `Complex<i32>` in unit disc (`z.norm() <= 1`)
 - [ ] implement `psi_evolve` function to compute next psi
   - [ ] implement normalization
   - [ ] implement reflections
