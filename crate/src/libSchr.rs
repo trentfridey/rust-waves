@@ -12,8 +12,6 @@ use wasm_bindgen::prelude::*;
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
-const ALPHA: u32 = 0xFF_00_00_00; 
-
 #[derive(Clone)]
 enum Status {
     Default,
@@ -28,47 +26,6 @@ pub struct Laboratory {
     image: Vec<u32>,
     status: Vec<Status>,
     t: u64
-}
-
-trait HexColor {
-    fn to_rgba(self) -> u32;
-}
-
-impl HexColor for Complex<i32> {
-    // This should map the amplitude and phase represented by the Complex<i32>
-    // to a color.
-    // The most straightforward way would map the phase to the hue, so we use HSV, and then convert to RGB.
-    // Since HSV is 3D, but the Complex<i32> is two dimensional, we set the saturation value to 1
-    // This constrains the space to the surface of a cone: the radial angle is the hue, and the height
-    // is the value, with the point of the cone corresponding to black.
-    fn to_rgba(self) -> u32 {
-        let hue = self.arg(); // should this cast an i32 to a float?
-        let value = self.norm(); // should this also cast to a float?
-        let (r,g,b) = hsv_to_rgb(hue, 1, value);
-        return ALPHA | r << 16 | g << 8 | b
-    } 
-}
-
-pub fn hsv_to_rgb((hue, sat, val): (u32, u32, u32)) -> (u8, u8, u8) {
-    // TODO: test return types
-    // based on algorithm from https://en.wikipedia.org/wiki/HSL_and_HSV
-    // assume H in [0,360], S in [0,1], V in [0,1]
-    let chroma: u8 = sat * val;  // chance of overflow?
-    let hue_div: u32 = hue / 60; // this should return a float in [0,6] 
-                                 // for matching
-    const x: u8 = chroma * (1-((hue_div % 2) - 1).abs()); // this should be u8
-    let (r1, g1, b1) = match hue_div {
-        h if h < 1 => (chroma, x, 0),
-        h if h < 2 => (x, chroma, 0),
-        h if h < 3 => (0, chroma, x),
-        h if h < 4 => (0, x, chroma),
-        h if h < 5 => (x, 0, chroma),
-        h if h < 6 => (chroma, 0, x),
-        _ => (0,0,0)
-    };
-    const m: u32 = val - chroma;
-    let (r,g,b) = (r1+m, g1+m, b1+m);
-    return (r,g,b);
 }
 
 impl Laboratory {

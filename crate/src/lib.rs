@@ -1,16 +1,15 @@
-mod utils;
 extern crate num;
 extern crate wasm_bindgen;
 
 use wasm_bindgen::prelude::*;
 
+mod utils;
+use utils::HexColor;
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator.
 #[cfg(feature = "wee_alloc")]
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
-
-const ALPHA: u32 = 0xFF_00_00_00;
 
 #[derive(Clone)]
 enum Status {
@@ -30,10 +29,6 @@ pub struct Arena {
     status: Vec<Status>,
 }
 
-trait HexColor {
-    fn to_rgb(self) -> u32;
-}
-
 pub fn apply_cap(x: i32) -> i32 {
     if x < i32::MIN >> 1 {
         return i32::MIN >> 1;
@@ -41,19 +36,6 @@ pub fn apply_cap(x: i32) -> i32 {
         return i32::MAX >> 1;
     } else {
         return x;
-    }
-}
-
-impl HexColor for i32 {
-    fn to_rgb(self) -> u32 {
-        let mut val: i32 = self >> 22;
-        if val > 0 {
-            let res = val as u32;
-            return (res << 8) | (res << 16) | ALPHA;
-        } else {
-            val = std::cmp::max(val, -255_i32);
-            return (-1_i32 * val) as u32 | ALPHA;
-        }
     }
 }
 
@@ -92,7 +74,7 @@ impl Arena {
         let v_0: Vec<i32> = vec![0; w * h];
         let force_0: Vec<i32> = vec![0; w * h];
 
-        let image_0: Vec<u32> = u_0.iter().map(|&x| apply_cap(x).to_rgb()).collect();
+        let image_0: Vec<u32> = u_0.iter().map(|&x| apply_cap(x).to_rgba()).collect();
         return Arena {
             height,
             width,
@@ -135,7 +117,7 @@ impl Arena {
                     self.u[i] = apply_cap(f + apply_cap(self.u[i] + self.v[i]));
                     f -= f >> FORCE_DAMPING_BIT_SHIFT;
                     self.force[i] = f;
-                    self.image[i] = self.u[i].to_rgb();
+                    self.image[i] = self.u[i].to_rgba();
                 },
                 Status::Wall => {
                     self.image[i] = 0x00000000;
