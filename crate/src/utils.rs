@@ -11,6 +11,231 @@ use num::complex::Complex;
 // }
 
 const ALPHA: u32 = 0xFF_00_00_00; 
+const FORCE_DAMPING_BIT_SHIFT: u8 = 4;
+
+#[derive(Clone, Copy)]
+pub enum Status {
+    Default,
+    Wall,
+}
+#[derive(Clone)]
+pub struct Arena {
+    pub width: u32,
+    pub height: u32,
+    pub status: Vec<Status>,
+}
+
+impl Arena {
+    pub fn new(width: u32, height: u32) -> Arena {
+        let w: usize = width as usize;
+        let h: usize = height as usize;
+        let status = (0..w * h).map(|x| {
+            if x < w { return Status::Wall };                       // Top
+            if h * (w - 1) < x && x < h * w { return Status::Wall };// Bottom
+            if x % w == 0 { return Status::Wall };                  // Left
+            if (x + 1) % w == 0 { return Status::Wall };            // Right
+            return Status::Default;
+        }).collect();
+
+        return Arena {
+            height,
+            width,
+            status,
+        };
+    }
+}
+
+pub struct CWave {
+    u: Vec<i32>,
+    v: Vec<i32>,
+    force: Vec<i32>,
+}
+#[derive(Debug)]
+pub struct QWave {
+    psi: Vec<Complex<i32>>,
+}
+
+pub trait Waveable {
+    fn new(arena: &Arena) -> Self;
+    fn step(&mut self, arena: &Arena, damping: u8);
+    fn render(&self) -> Vec<u32>;
+}
+
+impl Waveable for CWave {
+    fn new(arena: &Arena) -> CWave {
+        let w: usize = arena.width as usize;
+        let h: usize = arena.height as usize;
+        let mut u_0: Vec<i32> = vec![0; w * h];
+        for i in 0..w {
+            for j in 0..h {
+                if i > 50 && j > 50 && i < 100 && j < 100 {
+                    u_0[j * w + i] = 0x3fffffff
+                }
+            }
+        }
+        let v_0: Vec<i32> = vec![0; w * h];
+        let force_0: Vec<i32> = vec![0; w * h];
+        return CWave {
+            u: u_0,
+            v: v_0,
+            force: force_0,
+        }
+    }
+    fn step(&mut self, arena: &Arena, damping: u8) {
+        let w = arena.width as usize;
+        let h = arena.height as usize;
+        for i in 0..w * h {
+            match arena.status[i] {
+                Status::Default => {
+                    let u_cen = self.u[i];
+                    let u_north = self.u[i - w];
+                    let u_south = self.u[i + w];
+                    let u_east = self.u[i + 1];
+                    let u_west = self.u[i - 1];
+                    let uxx = ((u_west + u_east) >> 1) - u_cen;
+                    let uyy = ((u_north + u_south) >> 1) - u_cen;
+                    let mut vel = self.v[i] + (uxx >> 1) + (uyy >> 1);
+                    if damping > 0 {
+                        vel -= vel >> damping;
+                    }
+                    self.v[i] = vel.apply_cap();
+                },
+                _ => {}
+            }
+        }
+        // Apply velocity and forces
+        for i in 0..w * h {
+            match arena.status[i] {
+                Status::Default => {
+                    let mut f = self.force[i];
+                    self.u[i] = (f + (self.u[i] + self.v[i]).apply_cap()).apply_cap();
+                    f -= f >> FORCE_DAMPING_BIT_SHIFT;
+                    self.force[i] = f;
+                },
+                _ => {}
+            }
+        }
+    } 
+    fn render(&self) -> Vec<u32> {
+        return self.u.iter().map(|u: &i32| u.to_rgba()).collect();
+    }
+}
+
+// TODO: how to enforce normalization when representing 
+// the real and complex parts as integers?
+// Since left bitshift (division) a normalized Complex<i32>
+// will yield 0 by identity
+// should we normalize to i32::MAX ?
+// hsv_to_rgba would have to update to account for the scaling
+
+// range of i32 is -2^31 to 2^31 - 1
+// i32 in [-0x80000000, 0x7fffffff]
+// half is [-0x40000000, 0x3fffffff]
+//
+// To have full range of i32 datatype, implement mapping:
+// [-0x40000000, 0x3fffffff] -> [-1,1]
+// where the image is the range of the real and imaginary parts of a complex number
+// this is sufficient since normalization entails |z|^2 = 1 => x^2 + y^2 = 1 => x in [-1,1], y in  [-1,1]
+// therefore, we implement the finite difference part with half an i32
+// but we map to [-1,1] implicitly or explicitly when computing the color
+// which will ends up being a u32.
+// So we have: (re in [-0x40000000,0x3fffffff], im in [-0x40000000, 0x3fffffff]) -> ([-1,1],[-1,1]) -> [0xFF000000, 0xFFFFFFFF]  
+
+impl Waveable for QWave {
+    fn new(arena: &Arena) -> QWave {
+        let w: usize = arena.width as usize;
+        let h: usize = arena.height as usize;
+        let mut psi_0: Vec<Complex<i32>> = vec![Complex{re: 0, im: 0}; w * h];
+        psi_0[12] = Complex{re: 0x3fffffff, im: 0}; //delta function
+        return QWave {
+            psi: psi_0,
+        }
+    }
+    fn step(&mut self, arena: &Arena, _damping: u8) {
+
+        // finite difference algorithm
+        // computes psi_next a the point specified by row, col
+        // using a spatial stencil:
+        // [[0,1,0],[1,-4,1],[0,1,0]]
+        // TODO: boundary conditions?
+        // Can implement Neumann boundary conditions by modifiying the
+        // stencil to enable reflections. For example, on the left wall the
+        // stencil becomes: [[0,1,0],[0,-4,2],[0,1,0]]
+        let w = arena.width as usize;
+        let h = arena.height as usize;
+
+        let mut u_cen = self.psi.clone();
+        let mut u_west: Complex<i32>;
+        let mut u_east: Complex<i32>;
+        let mut u_north: Complex<i32>;
+        let mut u_south: Complex<i32>;
+        let mut uxx = vec![Complex{re: 0, im: 0}; w * h];
+        let mut uyy = vec![Complex{re: 0, im: 0}; w * h];
+
+        for i in 0..w * h {
+                match arena.status[i] {
+                    Status::Default => {
+                        u_cen[i] = self.psi[i];
+                        u_west = self.psi[i - 1];
+                        u_east = self.psi[i + 1];
+                        u_north = self.psi[i - w];
+                        u_south = self.psi[i + w];
+                        uxx[i] = Complex{ re: ((u_west.re + u_east.re) >> 1 ), im: ((u_west.im + u_east.im) >> 1 )} - u_cen[i];
+                        uyy[i] = Complex{ re: ((u_south.re + u_north.re) >> 1), im: ((u_south.im + u_north.im) >> 1)} - u_cen[i];
+                    },
+                    _ => {}
+            }
+        }
+        for i in 0..w * h {
+            match arena.status[i] {
+                Status::Default => {
+                    self.psi[i].re = u_cen[i].re - (uxx[i].im + uyy[i].im);
+                    self.psi[i].im = u_cen[i].im - (uxx[i].re + uyy[i].re);
+                    self.psi[i].apply_cap();
+                },
+                _ => {}
+            }
+        }
+        // let default_neighbors: Complex<i32> = left_neighbor + right_neighbor + top_neighbor + bottom_neighbor;
+        // TODO: debug reflections
+        // let psi_neighbors: Complex<i32> = match (row, col) {
+        //     (0, 0) => default_neighbors +  (bottom_neighbor + right_neighbor) / 2,
+        //     (0, col) if col == right => default_neighbors + (bottom_neighbor + left_neighbor) / 2,
+        //     (0, _) => default_neighbors + bottom_neighbor,
+        //     (row, 0) if row == bottom => default_neighbors +  (top_neighbor + right_neighbor) / 2,
+        //     (row, col) if row == bottom && col == right => default_neighbors +  (top_neighbor + left_neighbor) / 2,
+        //     (row, _) if row == bottom => default_neighbors + top_neighbor,
+        //     (_, 0) => default_neighbors + right_neighbor,
+        //     (_, col) if col == right => default_neighbors + left_neighbor,
+        //     (_, _) => default_neighbors
+        // };
+    }
+    fn render(&self) -> Vec<u32> {
+        return self.psi.iter().map(|x| x.to_rgba()).collect();
+    }
+}
+
+pub trait Rectified {
+    fn apply_cap(self) -> Self;
+}
+
+impl Rectified for i32 {
+    fn apply_cap(self) -> i32 {
+        if self < i32::MIN >> 1 {
+            return i32::MIN >> 1;
+        } else if self > i32::MAX >> 1 {
+            return i32::MAX >> 1;
+        } else {
+            return self;
+        }
+    } 
+}
+
+impl Rectified for Complex<i32> {
+    fn apply_cap(self) -> Complex<i32> {
+        return Complex { re: self.re.apply_cap(), im: self.im.apply_cap() };
+    }
+}
 
 pub trait HexColor {
     fn to_rgba(self) -> u32;
@@ -29,11 +254,21 @@ impl HexColor for i32 {
     }
 }
 
+// how does rust accomplish the conversion from i32 -> f32?
+// it changes representation, but not the quantity
+// therefore we need to map self.re, self.im as f32 -> [-1,1]
+// before passing the complex number to hsv_to_rgb
+// the map is [-0x40000000, 0x3fffffff] = [-1073741824,1073741823] 
+// T: [-2^30, 2^30-1] -> [-1,1]
+// T: x |-> (2x+1)/(2^31 - 1) 
+
+
 impl HexColor for Complex<i32> {
     fn to_rgba(self) -> u32 {
-        let f: Complex<f32> = Complex{ re: self.re as f32, im: self.im as f32};
-        let hue = f.arg(); // should this cast an i32 to a float?
-        let value = f.norm(); // should this also cast to a float?
+        let scale = |x: i32| { (2.0 * x as f32 + 1.0)/((2^31) as f32 - 1.0) };
+        let f: Complex<f32> = Complex{ re: scale(self.re), im: scale(self.im) };
+        let hue = f.arg(); 
+        let value = f.norm(); 
         let (r,g,b) = hsv_to_rgb(hue, 1.0, value);
         return ALPHA | r << 16 | g << 8 | b
     } 
@@ -60,9 +295,9 @@ pub fn hsv_to_rgb(hue: f32, sat: f32, val: f32) -> (u32, u32, u32) {
     let m: u32 = (val - chroma) as u32;
     let (r,g,b) = (255*(r1 as u32 + m), 255*(g1 as u32 + m), 255*(b1 as u32 + m));
     return (r,g,b);
-}
+} 
 
-use std::f32::consts::{FRAC_1_SQRT_2, PI}; 
+use std::f32::consts::PI; 
 
 #[test]
 pub fn test_red () {
@@ -94,4 +329,18 @@ pub fn test_black () {
     const ORIGIN: Complex<f32> = Complex { re: 0.0, im: 0.0 };
     let result = hsv_to_rgb(ORIGIN.arg(), 1.0, ORIGIN.norm());
     assert_eq!(ALPHA | result.0 << 16 | result.1 << 8 | result.2, BLACK);
+}
+
+#[test]
+pub fn test_QWave_step () {
+    let test_arena: Arena = Arena::new( 5,  5);
+    let mut test_wave: QWave = QWave::new(&test_arena);
+    let mut result= vec![Complex{re: 0, im: 0}; 25];
+    result[7].im =  -test_wave.psi[12].re >> 1;
+    result[11].im = -test_wave.psi[12].re >> 1;
+    result[13].im = -test_wave.psi[12].re >> 1;
+    result[17].im = -test_wave.psi[12].re >> 1;
+    result[12] = Complex{ re: test_wave.psi[12].re, im: 2*test_wave.psi[12].re};
+    test_wave.step(&test_arena, 0);
+    assert_eq!(result, test_wave.psi)
 }
