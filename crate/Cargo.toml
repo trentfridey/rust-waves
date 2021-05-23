@@ -3,7 +3,7 @@ authors = ["The RustWasm Developers"]
 categories = ["wasm"]
 description = "My super awesome Rust, WebAssembly, and Parcel project!"
 license = "Apache-2.0/MIT"
-name = "rust-parcel"
+name = "wave_equation"
 readme = "./README.md"
 repository = "https://github.com/rustwasm/rust-parcel-template"
 version = "0.1.0"
@@ -14,6 +14,7 @@ crate-type = ["cdylib"]
 [dependencies]
 cfg-if = "0.1.5"
 wasm-bindgen = "0.2.29"
+wasm-bindgen-test = "0.3"
 num = "0.2"
 
 # The `console_error_panic_hook` crate provides better debugging of panics by
