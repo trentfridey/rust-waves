@@ -19,8 +19,18 @@
       height: 100%;
       width: 100%;
     }
-
-    #canvas {
+    .fps-text {
+      font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+      font-size: 10px;
+      color: white;
+      background-color: grey;
+      border: 1px solid black;
+      padding: 2px 5px;
+      display: inline;
+      float: right;
+      width: 75px;
+    }
+    canvas {
       margin: auto;
       border: 1px solid black;
     }
@@ -40,13 +50,13 @@
 </head>
 
 <body>
+  <div class="fps-text">FPS: <span id="fps">0</span></div>
   <div class="container">
     <canvas id="canvas" width="200" height="200"></canvas>
     <button type="button" id="start">Start</button>
     <button type="button" id="step">Step</button>
-    <label for="debug">
-      <input type="checkbox" id="debug"/> Debug mode
-    </label>
+    <button type="button" id="debug-btn">Debug</button>
+    <canvas id="test-coloring" width="200" height="200"></canvas>
     <label>
       <input type="checkbox" id="view"/> Intensity only
     </label>
