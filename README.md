@@ -14,7 +14,7 @@ Inspired by [jtiscione/webassembly-wave](https://github.com/jtiscione/webassembl
 
 Rust:
 - [x] test `hsv_to_rgb` function and return types
-- [ ] plot colors for each `Complex<i32>` in unit disc (`z.norm() <= 1`)
+- [x] plot colors for each `Complex<i32>` in unit disc (`z.norm() <= 1`)
 - [ ] implement `step` function for `QWave`
   - [ ] implement normalization
   - [ ] implement reflections

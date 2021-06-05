@@ -121,13 +121,6 @@ impl Waveable for CWave {
     }
 }
 
-// TODO: how to enforce normalization when representing 
-// the real and complex parts as integers?
-// Since left bitshift (division) a normalized Complex<i32>
-// will yield 0 by identity
-// should we normalize to i32::MAX ?
-// hsv_to_rgba would have to update to account for the scaling
-
 // range of i32 is -2^31 to 2^31 - 1
 // i32 in [-0x80000000, 0x7fffffff]
 // half is [-0x40000000, 0x3fffffff]
@@ -254,23 +247,18 @@ impl HexColor for i32 {
     }
 }
 
-// how does rust accomplish the conversion from i32 -> f32?
-// it changes representation, but not the quantity
-// therefore we need to map self.re, self.im as f32 -> [-1,1]
-// before passing the complex number to hsv_to_rgb
-// the map is [-0x40000000, 0x3fffffff] = [-1073741824,1073741823] 
-// T: [-2^30, 2^30-1] -> [-1,1]
-// T: x |-> (2x+1)/(2^31 - 1) 
-
-
 impl HexColor for Complex<i32> {
     fn to_rgba(self) -> u32 {
-        let scale = |x: i32| { (2.0 * x as f32 + 1.0)/((2^31) as f32 - 1.0) };
+        let scale = |x: i32| { 
+            // maps i32 in [-2^30, 2^30-1] to f32 in [-1,1]
+            return ((x as f32) + 0.5)/((i32::MAX >> 1) as f32 - 0.5) 
+        };
         let f: Complex<f32> = Complex{ re: scale(self.re), im: scale(self.im) };
-        let hue = f.arg(); 
+        let hue_in_rads = f.arg();
+        let hue_in_degs = hue_in_rads * 180.0 / PI; 
         let value = f.norm(); 
-        let (r,g,b) = hsv_to_rgb(hue, 1.0, value);
-        return ALPHA | r << 16 | g << 8 | b
+        let (r,g,b) = hsv_to_rgb(hue_in_degs, 1.0, value);
+        return ALPHA | b << 16 | g << 8 | r
     } 
 }
 
@@ -293,11 +281,35 @@ pub fn hsv_to_rgb(hue: f32, sat: f32, val: f32) -> (u32, u32, u32) {
         _ => (0.0, 0.0, 0.0)
     };
     let m: u32 = (val - chroma) as u32;
-    let (r,g,b) = (255*(r1 as u32 + m), 255*(g1 as u32 + m), 255*(b1 as u32 + m));
+    let (r,g,b) = ((255.0*r1) as u32 + m, (255.0*g1) as u32 + m, (255.0*b1) as u32 + m);
     return (r,g,b);
 } 
 
 use std::f32::consts::PI; 
+
+#[test]
+pub fn test_to_rgba_red () {
+    const RED: u32 = 0xFF_00_00_FF;
+    const UNITY: Complex<i32> = Complex {re: 1 << 30, im: 0};
+    let result = UNITY.to_rgba();
+    assert_eq!(result, RED, "\nExpected: 0x{:X}\nActual:   0x{:X}", RED, result);
+}
+
+#[test]
+pub fn test_to_rgba_green () {
+    const GREEN: u32 = 0xFF_00_FF_00;
+    let one_third_turn: Complex<i32> = Complex {re: -(1 << 29), im: (((1 << 29) as f32)*((3.0_f32.sqrt()))) as i32};
+    let result = one_third_turn.to_rgba();
+    assert_eq!(result, GREEN, "\nExpected: 0x{:X}\nActual:   0x{:X}", GREEN, result);
+}
+
+#[test]
+pub fn test_to_rgba_blue () {
+    const BLUE: u32 = 0xFF_FF_00_00;
+    let two_third_turn: Complex<i32> = Complex {re: -(1 << 29), im: -(((1 << 29) as f32)*((3.0_f32.sqrt()))) as i32};
+    let result = two_third_turn.to_rgba();
+    assert_eq!(result, BLUE, "\nExpected: 0x{:X}\nActual:   0x{:X}", BLUE, result);
+}
 
 #[test]
 pub fn test_red () {
@@ -310,16 +322,16 @@ pub fn test_red () {
 #[test]
 pub fn test_green () {
     const GREEN: u32 = 0xFF_00_FF_00;
-    let ONE_THIRD_TURN: Complex<f32> = Complex { re: -0.5, im: 0.5*(3.0_f32.sqrt()) };
-    let result = hsv_to_rgb(ONE_THIRD_TURN.arg() * 180.0/ PI, 1.0, ONE_THIRD_TURN.norm());
+    let one_third_turn: Complex<f32> = Complex { re: -0.5, im: 0.5*(3.0_f32.sqrt()) };
+    let result = hsv_to_rgb(one_third_turn.arg() * 180.0/ PI, 1.0, one_third_turn.norm());
     assert_eq!(ALPHA | result.0 << 16 | result.1 << 8 | result.2, GREEN);
 }
 
 #[test]
 pub fn test_blue () {
     const BLUE: u32  = 0xFF_00_00_FF;
-    let TWO_THIRD_TURN: Complex<f32> = Complex { re: -0.5, im: -0.5*(3.0_f32.sqrt()) };
-    let result = hsv_to_rgb(TWO_THIRD_TURN.arg() * 180.0 / PI, 1.0, TWO_THIRD_TURN.norm());
+    let two_third_turn: Complex<f32> = Complex { re: -0.5, im: -0.5*(3.0_f32.sqrt()) };
+    let result = hsv_to_rgb(two_third_turn.arg() * 180.0 / PI, 1.0, two_third_turn.norm());
     assert_eq!(ALPHA | result.0 << 16 | result.1 << 8 | result.2, BLUE);
 }
 

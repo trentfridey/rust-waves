@@ -22,28 +22,7 @@ pub struct Canvas {
 }
 
 
-pub fn test_pattern() -> Vec<u32> {
-    let (min, max) = (-0x40_000000 as i32, 0x3f_ffffff);
-    let range = (min..max).len();
-    let scale = |x: i32 | { (2.0*(x as f32) + 1.0) / (((1 << 31) as f32 - 1.0)) };
 
-
-    let mut image: Vec<u32> =  vec![0u32; range];
-    for (col, x) in (min..max).enumerate() {
-        for (row, y) in (min..max).enumerate() {
-            let index = row*range + col;
-            let arc: f32 = (1.0 - scale(x)).sqrt();
-            let yi = scale(y);
-            if -arc <= yi && yi < arc {
-                image[index] = Complex { re: x, im: y }.to_rgba();
-            }
-            else { 
-                image[index] = 0xFF_000000;
-            }
-        }
-    }
-    return image;
-}
 
 #[wasm_bindgen]
 impl Canvas { 
@@ -53,11 +32,38 @@ impl Canvas {
         let arena = Arena::new(width, height);
         let image = vec![0xFF000000; (width*height) as usize];
         let wave: QWave = QWave::new(&arena);
+        
+        let (min, max) = (i32::MIN >> 1, i32::MAX >> 1); // full range of possible colors
+        // map [0, width] -> [min, max]
+        let sampling_scale = |x: u32| { 
+            let s = (((max as f32 - min as f32)*(x as f32) / width as f32) as i32) + min;
+            return s
+        }; 
+        // map [min, max] -> [-1,1]
+        let scale = |x: i32| { 
+            return ((x as f32) + 0.5)/((i32::MAX >> 1) as f32 - 0.5) 
+        };
+    
+        let mut test: Vec<u32> =  vec![0u32; (width * height) as usize];
+        for x in 0..width {
+            for y in 0..height {
+                let index = (y*width + x) as usize;
+                let complex_x = scale(sampling_scale(x));
+                let arc: f32 = (1.0 - complex_x*complex_x).sqrt();
+                let complex_y = -scale(sampling_scale(y));
+                if -arc <= complex_y && complex_y < arc {
+                    test[index] = Complex { re: sampling_scale(x), im: sampling_scale(y) }.to_rgba();
+                }
+                else { 
+                    test[index] = 0xFF_000000;
+                }
+            }
+        }
         return Canvas {
             arena,
             image,
             wave,
-            test: test_pattern()
+            test,
         }
     }
     #[no_mangle]

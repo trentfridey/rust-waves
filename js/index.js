@@ -16,7 +16,7 @@ const debug = () => {
     debugCtx.putImageData(testData, 0, 0);
 }
 
-debugBtn = document.getElementById('debug-btn')
+const debugBtn = document.getElementById('debug-btn')
 debugBtn.addEventListener('click', debug)
 
 
