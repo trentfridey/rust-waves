@@ -13,6 +13,7 @@ Inspired by [jtiscione/webassembly-wave](https://github.com/jtiscione/webassembl
 - [x] Find way to live-reload on Rust changes (using [rust-parcel-template](https://github.com/rustwasm/rust-parcel-template))
 
 Rust:
+- [x] implement Gaussian wave packet for `new` `QWave`
 - [x] test `hsv_to_rgb` function and return types
 - [x] plot colors for each `Complex<i32>` in unit disc (`z.norm() <= 1`)
 - [ ] implement `step` function for `QWave`
@@ -26,8 +27,9 @@ Rust:
 Front-end:
 - [x] Load wasm for Schrodinger equation simulation
 - [x] implement start / stop button
-- [ ] implement intensity-only toggle
+- [x] implement intensity-only toggle
 - [x] implement FPS counter
+- [x] implement frame counter
 
 ## Background:
 
@@ -51,7 +53,7 @@ $$
 u_{xx} \approx \frac{u(x-h,y,t)-2u(x,y,t)+u(x+h,y,t)}{2}
 $$
 
-and likewise for the other coordinate and the imaginary part. Putting this altogether, the update rule is:
+and likewise for the other coordinate and the imaginary part. Putting this together, the update rule is:
 
 $$
 u(t+1,\vec{x}) = u(t, \vec{x}) - (v_{xx}(t,\vec{x}) + v_{yy}(t,\vec{x}))
