@@ -1,6 +1,5 @@
 import rust, { Canvas } from '../crate/Cargo.toml' 
 
-console.log(Canvas, rust.wasm.memory)
 let canvas = document.getElementById('canvas');
 const rustCanvas = Canvas.new(canvas.width, canvas.height);
 const width = rustCanvas.width();
@@ -19,55 +18,48 @@ const debug = () => {
 const debugBtn = document.getElementById('debug-btn')
 debugBtn.addEventListener('click', debug)
 
+const stepBtn = document.getElementById('step-btn')
+stepBtn.addEventListener('click', step)
 
-// let intensity = document.getElementById('view').checked;
+let viewColors = true
+const intensityBtn = document.getElementById('intensity')
+intensityBtn.addEventListener('click', () => { viewColors = !viewColors })
 
-// let step = document.getElementById('step');
-// step.addEventListener('click', () => {
-//   render({debug});  
-// });
+const FPSCounter = document.getElementById('fps')
+const frameCounter = document.getElementById('frameCount')
 
-// canvas.onmousedown = e => {
-//     e.preventDefault();
-//     const loc = windowToCanvas(canvas, e.clientX, e.clientY);
-//     const targetIndex = loc.x + loc.y * width;
-//     forceArray[targetIndex] = 0x3fffffff;
-// };
+const norm = document.getElementById('norm');
 
-// const windowToCanvas = (canvas, x, y) => {
-//     const bbox = canvas.getBoundingClientRect();
-//     return {
-//         x: Math.round(x - bbox.left * (canvas.width / bbox.width)),
-//         y: Math.round(y - bbox.top * (canvas.height / bbox.height))
-//     };
-// };
+
+function step () {
+    rustCanvas.step(0, !viewColors);
+    frameCount++
+    frameCounter.innerText = frameCount
+    norm.innerText = rustCanvas.norm();
+    const imagePtr = rustCanvas.image();
+    const imageArray = new Uint8ClampedArray(rust.wasm.memory.buffer, imagePtr, 4 * height * width);
+    let imageData = new ImageData(imageArray, width, height);
+    ctx.putImageData(imageData, 0, 0);
+}
+
 let t0 = 0;
 let t1 = 1;
 let duration = t0 - t1;
 let frameCount = 0
-
-const FPSCounter = document.getElementById('fps')
-
 let id = null;
 
 
 function render(){
     id = null;
     t0 = performance.now()
-    frameCount++
-
-    rustCanvas.step();
-    const imagePtr = rustCanvas.image();
-    const imageArray = new Uint8ClampedArray(rust.wasm.memory.buffer, imagePtr, 4 * height * width);
-    let imageData = new ImageData(imageArray, width, height);
-    ctx.putImageData(imageData, 0, 0);
+    step()
     t1 = performance.now()
     duration = t1 - t0
     run();
 };
 
 function run (){
-    if(frameCount %10 === 0) FPSCounter.innerText = Math.floor(1e3/duration)
+    if(frameCount % 10 === 0) FPSCounter.innerText = Math.floor(1e3/duration)
     if (!id) { id = requestAnimationFrame(render) }
 }
 
@@ -75,6 +67,15 @@ let start = document.getElementById('start');
 let running = false;
 start.addEventListener('click', () => {
     running = !running;
-    if(running) { run(); start.innerHTML = 'Stop'; }
-    else { cancelAnimationFrame(id); id = null; start.innerHTML = 'Start';  }
+    if(running) { 
+        run(); 
+        start.innerHTML = 'Stop';
+        start.style.backgroundColor = 'red';
+    }
+    else { 
+        cancelAnimationFrame(id); 
+        id = null; 
+        start.innerHTML = 'Start';
+        start.style.backgroundColor = 'greenyellow';
+    }
 });

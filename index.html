@@ -21,7 +21,7 @@
       width: 100%;
     }
     .fps-text {
-      font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+      font-family: sans-serif;
       font-size: 10px;
       color: white;
       background-color: grey;
@@ -29,7 +29,7 @@
       padding: 2px 5px;
       display: inline;
       float: right;
-      width: 75px;
+      min-width: 75px;
     }
     canvas {
       margin: auto;
@@ -41,25 +41,69 @@
       height: 30px;
       cursor: pointer;
       border: 1px solid black;
-      width: 100px;
-      display: inline-block;
+    }
+    label {
+      color: white;
+      font-family: sans-serif;
+      margin: auto;
     }
     input[type="checkbox"] {
-      margin: auto
+      margin: auto;
+      color: white;
+    }
+    .btn-container {
+      width: 250px;
+      display: flex;
+      flex-direction: row;
+      margin: auto;
+    }
+    .btn-container > button {
+      flex: 1;
+    }
+    #start {
+      background-color: greenyellow;
+    }
+    #step-btn {
+      background-color: yellow;
+    }
+    #step-btn:active {
+      background-color: rgb(172, 172, 0);
+    }
+    details {
+      margin: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    summary {
+      color: white;
+      font-family: sans-serif;
+      font-size: 12px;
+    }
+    summary:hover {
+      cursor: pointer;
     }
   </style>
 </head>
 
 <body>
-  <div class="fps-text">FPS: <span id="fps">0</span></div>
+  <div class="fps-text">
+    FPS: <span id="fps">0</span>
+    <details>
+      <summary>Debug</summary>
+      <div>Frame number: <span id="frameCount">0</span></div>
+      <div>Norm: <span id="norm">1</span></div>
+      <button type="button" id="debug-btn">Plot Colors</button>
+      <canvas id="test-coloring" width="200" height="200"></canvas>
+    </details>
+  </div>
   <div class="container">
-    <canvas id="canvas" width="200" height="200"></canvas>
-    <button type="button" id="start">Start</button>
-    <button type="button" id="step">Step</button>
-    <button type="button" id="debug-btn">Debug</button>
-    <canvas id="test-coloring" width="200" height="200"></canvas>
+    <canvas id="canvas" width="200" height="200" style="width:200px;height:200px"></canvas>
+    <div class="btn-container">
+      <button type="button" id="start">Start</button>
+      <button type="button" id="step-btn">Step</button>
+    </div>
     <label>
-      <input type="checkbox" id="view"/> Intensity only
+      <input type="checkbox" id="intensity"/> Intensity only
     </label>
   </div>
   <noscript>This page contains webassembly and javascript content, please enable javascript in your browser.</noscript>
