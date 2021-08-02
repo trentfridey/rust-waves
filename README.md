@@ -18,11 +18,6 @@ Rust:
 - [x] plot colors for each `Complex<i32>` in unit disc (`z.norm() <= 1`)
 - [ ] implement `step` function for `QWave`
   - [ ] implement normalization
-  - [ ] implement reflections
-- [ ] tests for `step`:
-  - [x] test for $\delta$-function step
-  - [ ] test for reflections
-  - [ ] test for normalization
 
 Front-end:
 - [x] Load wasm for Schrodinger equation simulation
@@ -33,12 +28,10 @@ Front-end:
 
 ## Background:
 
-The code implements a finite difference method.
-
-For example, for the Schrodinger equation, the update rule comes from approximating the derivatives:
+The code implements a finite difference method; for the Schrodinger simulation, it uses the centered-difference in time for stability reasons (see [[1]](#1) for background and an surprising derivation of the energy-time uncertainty relation!). Explicitly this is:
 
 $$
-i \frac{\partial \psi}{\partial t} \approx i( \psi(t+1,\vec{x}) - \psi(t,\vec{x}))
+\frac{\partial \psi}{\partial t} \approx \frac{( \psi(t+\Delta t,\vec{x}) - \psi(t-\Delta t,\vec{x}))}{\Delta t}
 $$
 
 $$
@@ -46,32 +39,30 @@ $$
 $$
 
 $$
-\psi_{xx} = u_{xx} + iv_{xx}
+\psi_{xx} \approx \frac{\psi(x-\delta,y,t)-2\psi(x,y,t)+\psi(x+\delta,y,t)}{2(\delta)^2}
 $$
 
-$$
-u_{xx} \approx \frac{u(x-h,y,t)-2u(x,y,t)+u(x+h,y,t)}{2}
-$$
-
-and likewise for the other coordinate and the imaginary part. Putting this together, the update rule is:
+The update rule is:
 
 $$
-u(t+1,\vec{x}) = u(t, \vec{x}) - (v_{xx}(t,\vec{x}) + v_{yy}(t,\vec{x}))
+\psi^{n+1}_{j,k} = 
+  \psi^{n-1}_{j,k} + 
+  \frac{2\Delta t}{\delta^2}\frac{i\hbar}{2m}
+  \left[
+    \psi^{n}_{j-\delta,k}+\psi^{n}_{j+\delta,k} +
+    \psi^{n}_{j,k-\delta}+\psi^{n}_{j,k+\delta} -
+    4\psi^{n}_{j,k}
+  \right]
 $$
 
-$$
-v(t+1,\vec{x}) = v(t, \vec{x}) - (u_{xx}(t,\vec{x}) + u_{yy}(t,\vec{x}))
-$$
-
-The stencil for the spatial derivative is:
+The stability criteria is:
 
 $$
-\nabla^2 \sim
-\left[
-\begin{array}{ccc}
-0 & 1/2 & 0 \\
-1/2 & -2 & 1/2 \\
-0 & 1/2 & 0 \\
-\end{array}
-\right]
+\frac{\hbar}{m} = \beta \leq \frac{1}{2}\frac{\delta^2}{\Delta t} 
 $$
+
+so we let $\beta = 1/4$
+
+## References
+
+<a id="1">[1]</a> *Numerical Methods and Causality in Physics*: https://arxiv.org/pdf/1302.5601.pdf
