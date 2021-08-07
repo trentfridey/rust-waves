@@ -17,7 +17,8 @@ Rust:
 - [x] test `hsv_to_rgb` function and return types
 - [x] plot colors for each `Complex<i32>` in unit disc (`z.norm() <= 1`)
 - [ ] implement `step` function for `QWave`
-  - [ ] implement normalization
+  - [x] implement centered-time finite difference
+  - [ ] debug integer overflow before hsv_to_rgba
 
 Front-end:
 - [x] Load wasm for Schrodinger equation simulation
@@ -28,32 +29,28 @@ Front-end:
 
 ## Background:
 
+$$
+\frac{\partial \psi}{\partial t} = \frac{i\hbar}{2m}\nabla^2 \psi
+$$
+
 The code implements a finite difference method; for the Schrodinger simulation, it uses the centered-difference in time for stability reasons (see [[1]](#1) for background and an surprising derivation of the energy-time uncertainty relation!). Explicitly this is:
 
 $$
-\frac{\partial \psi}{\partial t} \approx \frac{( \psi(t+\Delta t,\vec{x}) - \psi(t-\Delta t,\vec{x}))}{\Delta t}
+\frac{\partial \psi}{\partial t} \approx \frac{\psi^{n+1}_{j,k} - \psi^{n-1}_{j,k}}{2\Delta t}
 $$
 
 $$
-\nabla^2 \psi = \psi_{xx}(t,\vec{x}) + \psi_{yy}(t,\vec{x})
+\nabla^2 \psi = \psi_{xx}+ \psi_{yy}
 $$
 
 $$
-\psi_{xx} \approx \frac{\psi(x-\delta,y,t)-2\psi(x,y,t)+\psi(x+\delta,y,t)}{2(\delta)^2}
+\psi_{xx} \approx \frac{
+  \psi^{n}_{j-\delta,k}
+  -2\psi^{n}_{j,k}
+  +\psi^{n}_{j+\delta,k}
+  }{\delta^2}
 $$
 
-The update rule is:
-
-$$
-\psi^{n+1}_{j,k} = 
-  \psi^{n-1}_{j,k} + 
-  \frac{2\Delta t}{\delta^2}\frac{i\hbar}{2m}
-  \left[
-    \psi^{n}_{j-\delta,k}+\psi^{n}_{j+\delta,k} +
-    \psi^{n}_{j,k-\delta}+\psi^{n}_{j,k+\delta} -
-    4\psi^{n}_{j,k}
-  \right]
-$$
 
 The stability criteria is:
 
@@ -61,7 +58,19 @@ $$
 \frac{\hbar}{m} = \beta \leq \frac{1}{2}\frac{\delta^2}{\Delta t} 
 $$
 
-so we let $\beta = 1/4$
+
+The update rule is:
+
+$$
+\psi^{n+1}_{j,k} = 
+  \psi^{n-1}_{j,k} - 
+  \frac{i\beta\Delta t}{\delta^2}
+  \left[
+    \psi^{n}_{j-\delta,k}+\psi^{n}_{j+\delta,k} +
+    \psi^{n}_{j,k-\delta}+\psi^{n}_{j,k+\delta} -
+    4\psi^{n}_{j,k}
+  \right]
+$$
 
 ## References
 
