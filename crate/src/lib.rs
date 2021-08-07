@@ -5,7 +5,11 @@ use wasm_bindgen::prelude::*;
 
 
 mod utils;
-use utils::{Arena, QWave, CWave, Waveable, gen_test_pattern};
+use utils::{Arena, gen_test_pattern};
+
+mod colors;
+mod waves;
+use waves::{QWave, CWave, Waveable};
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator.
 #[cfg(feature = "wee_alloc")]
