@@ -6,6 +6,20 @@ const width = rustCanvas.width();
 const height = rustCanvas.height();
 let ctx = canvas.getContext('2d');
 
+const stepBtn = document.getElementById('step-btn')
+stepBtn.addEventListener('click', step)
+
+let viewColors = true
+const intensityBtn = document.getElementById('intensity')
+intensityBtn.addEventListener('click', () => { viewColors = !viewColors })
+
+// Debug tools --------------------------------------------
+
+const FPSCounter = document.getElementById('fps')
+const frameCounter = document.getElementById('frameCount')
+
+const norm = document.getElementById('norm');
+
 const debug = () => {
     let debugCanvas = document.getElementById('test-coloring');
     let debugCtx = debugCanvas.getContext('2d');
@@ -18,18 +32,42 @@ const debug = () => {
 const debugBtn = document.getElementById('debug-btn')
 debugBtn.addEventListener('click', debug)
 
-const stepBtn = document.getElementById('step-btn')
-stepBtn.addEventListener('click', step)
 
-let viewColors = true
-const intensityBtn = document.getElementById('intensity')
-intensityBtn.addEventListener('click', () => { viewColors = !viewColors })
+const hoveredColor = document.getElementById('hoveredColor');
 
-const FPSCounter = document.getElementById('fps')
-const frameCounter = document.getElementById('frameCount')
+function pick(event, destination) {
+    const x = event.layerX - event.target.offsetLeft;
+    const y = event.layerY - event.target.offsetTop;
+    const pixel = ctx.getImageData(x, y, 1, 1);
+    const data = pixel.data;
+    const [r,g,b,a] = data
+    // console.log(event)
 
-const norm = document.getElementById('norm');
+    const rgba_to_hue = (args) => {
+        const normalize = v => v / 255
+        const normalized = Array.from(args).map(v => normalize(v))
+        const xMax = Math.max(...normalized)
+        const xMin = Math.min(...normalized)
+        const [r,g,b] = normalized
+        const chroma = xMax - xMin
+        if (chroma === 0) return 0
+        if (xMax === r) return 60*(g-b)/chroma
+        if (xMax === g) return 60*(2 + (b-r)/chroma)
+        if (xMax === b) return 60*(4 + (r-g)/chroma)
+    }
 
+    const rgba = `rgba(${r}, ${g}, ${b}, ${a / 255})`;
+    destination.style.background = rgba;
+    destination.textContent = `${rgba_to_hue(data.slice(0,3)).toFixed(0)} degrees`;
+
+    return rgba;
+}
+
+canvas.addEventListener('mousemove', function(evt) {
+    pick(evt, hoveredColor)
+})
+
+// ---------------------------------------------------------------
 
 function step () {
     rustCanvas.step(0, !viewColors);

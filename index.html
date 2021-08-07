@@ -82,6 +82,10 @@
     summary:hover {
       cursor: pointer;
     }
+    #hoveredColor {
+      height: 32px;
+      width: 32px;
+    }
   </style>
 </head>
 
@@ -92,6 +96,7 @@
       <summary>Debug</summary>
       <div>Frame number: <span id="frameCount">0</span></div>
       <div>Norm: <span id="norm">1</span></div>
+      <div>Hovered Color: <span id="hoveredColor">""</span></div>
       <button type="button" id="debug-btn">Plot Colors</button>
       <canvas id="test-coloring" width="200" height="200"></canvas>
     </details>
