@@ -75,6 +75,7 @@ pub struct CWave {
 #[derive(Debug)]
 pub struct QWave {
     psi: Vec<Complex<i32>>,
+    psi_prev: Vec<Complex<i32>>,
     pub norm: f32
 }
 
@@ -160,22 +161,26 @@ impl Waveable for QWave {
             let yf = y as f32 / arena.width as f32;
             xf.sin() * yf.sin()
         };
+        let init_psi = |x, y| { gauss(4*x, 4*y) };
 
-        let psi_0: Vec<Complex<i32>> = vec![Complex{re: 0, im: 0}; w * h]
-            .into_iter()
-            .enumerate()
-            .map(|(i, pt)| {
-                let (x, y) = arena.to_xy(i);
-                let amp = gauss(20*x, 5*y)*10.0*sine(90, 90*y);
-                let amp_i32 = (amp * (i32::MAX >> 4) as f32) as i32;
-                return Complex{ re: amp_i32, im: 0 }
-            }).collect();
-        let norm_0 = psi_0.iter().fold(0.0, |acc, &psi| -> f32 {
-            acc + Complex{ re: to_amp(psi.re), im: to_amp(psi.im) }.norm() / ((w * h) as f32)
-        });
+        let mut psi_0: Vec<Complex<i32>> = vec![Complex{re: 0, im: 0}; w*h];
+        let n = (0..w*h).into_iter().fold(0.0, |acc, i| { 
+            let (x,y) = arena.to_xy(i);
+            let amp = init_psi(x,y);
+            acc + (amp * amp)
+         });
+
+        for i in 0..w * h {
+            let (x,y) = arena.to_xy(i);
+            let amp = init_psi(x,y) / n;
+            let amp_i32 = (2 << 16)*from_amp(amp);
+            psi_0[i] = Complex{ re: amp_i32, im: 0 };
+        }
+        let psi_prev = psi_0.clone();
         return QWave {
             psi: psi_0,
-            norm: norm_0
+            psi_prev: psi_prev,
+            norm: n
         }
     }
     fn step(&mut self, arena: &Arena, _damping: u8) {
@@ -201,8 +206,8 @@ impl Waveable for QWave {
                         u_east = self.psi[i + 1];
                         u_north = self.psi[i - w];
                         u_south = self.psi[i + w];
-                        uxx[i] = Complex{ re: ((u_west.re + u_east.re) >> 1 ), im: ((u_west.im + u_east.im) >> 1 )} - u_cen[i];
-                        uyy[i] = Complex{ re: ((u_south.re + u_north.re) >> 1), im: ((u_south.im + u_north.im) >> 1)} - u_cen[i];
+                        uxx[i] = Complex{ re: u_west.re + u_east.re, im: u_west.im + u_east.im} - u_cen[i];
+                        uyy[i] = Complex{ re: u_south.re + u_north.re, im: u_south.im + u_north.im} - u_cen[i];
                     },
                     _ => {}
             }
@@ -210,29 +215,21 @@ impl Waveable for QWave {
         for i in 0..w * h {
             match arena.status[i] {
                 Status::Default => {
-                    self.psi[i].re = u_cen[i].re - (uxx[i].im + uyy[i].im);
-                    self.psi[i].im = u_cen[i].im - (uxx[i].re + uyy[i].re);
-                    self.psi[i].apply_cap();
+                    // set n -> n+1
+                    self.psi[i].re = self.psi_prev[i].re - (uxx[i].im + uyy[i].im) >> 3;
+                    self.psi[i].im = self.psi_prev[i].im - (uxx[i].re + uyy[i].re) >> 3;
+                    // set n-1 -> n
+                    self.psi_prev[i] = u_cen[i]
                 },
                 _ => {}
             }
         }
-        self.norm = self.psi.iter().fold(0.0, |acc, &psi| -> f32 {
-            acc + Complex{ re: to_amp(psi.re), im: to_amp(psi.im) }.norm() / ((w * h) as f32)
-        });
-        // let default_neighbors: Complex<i32> = left_neighbor + right_neighbor + top_neighbor + bottom_neighbor;
-        // TODO: debug reflections
-        // let psi_neighbors: Complex<i32> = match (row, col) {
-        //     (0, 0) => default_neighbors +  (bottom_neighbor + right_neighbor) / 2,
-        //     (0, col) if col == right => default_neighbors + (bottom_neighbor + left_neighbor) / 2,
-        //     (0, _) => default_neighbors + bottom_neighbor,
-        //     (row, 0) if row == bottom => default_neighbors +  (top_neighbor + right_neighbor) / 2,
-        //     (row, col) if row == bottom && col == right => default_neighbors +  (top_neighbor + left_neighbor) / 2,
-        //     (row, _) if row == bottom => default_neighbors + top_neighbor,
-        //     (_, 0) => default_neighbors + right_neighbor,
-        //     (_, col) if col == right => default_neighbors + left_neighbor,
-        //     (_, _) => default_neighbors
-        // };
+        self.norm = self.psi
+            .iter()
+            .fold(0.0, |acc, x| { 
+                let n = to_amp(x.re).powi(2) + to_amp(x.im).powi(2);
+                acc + n
+            });
     }
     fn render(&self, norm_only: bool) -> Vec<u32> {
         return self.psi.iter().map(|x| x.to_rgba(norm_only)).collect();
@@ -265,6 +262,12 @@ impl Rectified for Complex<i32> {
 pub fn to_amp (x: i32) -> f32 {
     return ((x as f32) + 0.5)/((I32_CAP_MAX) as f32 - 0.5)
 }
+
+// Convert float in [-1, 1] to i32 in [I32_CAP_MIN, I32_CAP_MAX]
+pub fn from_amp (x: f32) -> i32 {
+    return ((I32_CAP_MAX as f32) * x) as i32
+}
+
 pub trait HexColor {
     fn to_rgba(self, norm_only: bool) -> u32;
 }
