@@ -108,13 +108,15 @@ impl Waveable for QWave {
              return wave_packet(x,y)
         };
 
-        let mut psi_0: Vec<Complex<i32>> = vec![Complex{re: 0, im: 0}; w*h];
-        let n = (0..w*h).into_iter().fold(0.0, |acc, i| { 
+        // compute ∑(|ψ|^2)
+        let n: f32 = (0..w*h).into_iter().fold(0.0, |acc, i| { 
             let (x,y) = arena.to_xy(i);
             let amp = init_psi(x,y);
-            acc + (amp * amp)
-         });
-
+            acc + (amp.norm_sqr())
+        });
+        
+        // ψ0 = ψ / √[∑(|ψ|^2)] => ∑|ψ0|^2 = 1 
+        let mut psi_0: Vec<Complex<i32>> = vec![Complex{re: 0, im: 0}; w*h];
         for i in 0..w * h {
             let (x,y) = arena.to_xy(i);
             let amp = init_psi(x,y) / n;
