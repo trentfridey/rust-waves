@@ -81,6 +81,14 @@ impl Rectified for Complex<i32> {
     }
 }
 
+impl Rectified for f32 {
+    fn apply_cap(self) -> Self {
+        if self > 1.0 { return 1.0 }
+        else if self < -1.0 { return -1.0 }
+        else { return self } 
+    }
+}
+
 // Convert i32 to float in [-1, 1]
 pub fn to_amp (x: i32) -> f32 {
     return ((x as f32) + 0.5)/((I32_CAP_MAX) as f32 - 0.5)
