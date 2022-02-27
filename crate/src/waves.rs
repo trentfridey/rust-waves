@@ -118,14 +118,59 @@ impl Waveable for QWave {
         // ψ0 = ψ / √[∑(|ψ|^2)] => ∑|ψ0|^2 = 1 
         let mut psi_0: Vec<Complex<i32>> = vec![Complex{re: 0, im: 0}; w*h];
         for i in 0..w * h {
-            let (x,y) = arena.to_xy(i);
-            let amp = init_psi(x,y) / n;
-            let amp_i32 = (2 << 16)*from_amp(amp);
-            psi_0[i] = Complex{ re: amp_i32, im: 0 };
+            match arena.status[i] {
+                Status::Default => {
+                    let (x,y) = arena.to_xy(i);
+                    let amp = init_psi(x,y) / n.sqrt();            
+                    psi_0[i] = Complex{ re: from_amp(amp.re), im: from_amp(amp.im) };
+                },
+                _ => {}
+            }
         }
+
+        fn init_step(psi_prev: &Vec<Complex<i32>>, arena: &Arena) -> Vec<Complex<i32>> {
+            let w = arena.width as usize;
+            let h = arena.height as usize;
+    
+            let mut u_cen = psi_prev.clone();
+            let mut u_west: Complex<i32>;
+            let mut u_east: Complex<i32>;
+            let mut u_north: Complex<i32>;
+            let mut u_south: Complex<i32>;
+            let mut uxx = vec![Complex{re: 0, im: 0}; w * h];
+            let mut uyy = vec![Complex{re: 0, im: 0}; w * h];
+            let mut psi_0 = vec![Complex{re: 0, im: 0}; w*h];
+    
+            for i in 0..w * h {
+                    match arena.status[i] {
+                        Status::Default => {
+                            u_cen[i] = psi_prev[i];
+                            u_west   = psi_prev[i - 1];
+                            u_east   = psi_prev[i + 1];
+                            u_north  = psi_prev[i - w];
+                            u_south  = psi_prev[i + w];
+                            uxx[i] = Complex{ re: u_west.re + u_east.re, im: u_west.im + u_east.im} - (2*u_cen[i]);
+                            uyy[i] = Complex{ re: u_south.re + u_north.re, im: u_south.im + u_north.im} - (2*u_cen[i]);
+                        },
+                        _ => {}
+                }
+            }
+            for i in 0..w * h {
+                match arena.status[i] {
+                    Status::Default => {
+                        // set n -> n+1
+                        psi_0[i].re = psi_prev[i].re - ((uxx[i].im + uyy[i].im) >> STABILITY_PARAM);
+                        psi_0[i].im = psi_prev[i].im - ((uxx[i].re + uyy[i].re) >> STABILITY_PARAM);
+                    },
+                    _ => {}
+                }
+            }
+            return psi_0
+        }
+
         let psi_prev = psi_0.clone();
         return QWave {
-            psi: psi_0,
+            psi: init_step(&psi_prev, &arena),
             psi_prev: psi_prev,
             norm: n
         }
