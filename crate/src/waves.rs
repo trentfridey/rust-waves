@@ -198,8 +198,8 @@ impl Waveable for QWave {
                         u_east = self.psi[i + 1];
                         u_north = self.psi[i - w];
                         u_south = self.psi[i + w];
-                        uxx[i] = Complex{ re: u_west.re + u_east.re, im: u_west.im + u_east.im} - u_cen[i];
-                        uyy[i] = Complex{ re: u_south.re + u_north.re, im: u_south.im + u_north.im} - u_cen[i];
+                        uxx[i] = Complex{ re: u_west.re + u_east.re, im: u_west.im + u_east.im} - (2*u_cen[i]);
+                        uyy[i] = Complex{ re: u_south.re + u_north.re, im: u_south.im + u_north.im} - (2*u_cen[i]);
                     },
                     _ => {}
             }
@@ -208,8 +208,8 @@ impl Waveable for QWave {
             match arena.status[i] {
                 Status::Default => {
                     // set n -> n+1
-                    self.psi[i].re = self.psi_prev[i].re - (uxx[i].im + uyy[i].im) >> 3;
-                    self.psi[i].im = self.psi_prev[i].im - (uxx[i].re + uyy[i].re) >> 3;
+                    self.psi[i].re = self.psi_prev[i].re - ((uxx[i].im + uyy[i].im) >> STABILITY_PARAM);
+                    self.psi[i].im = self.psi_prev[i].im - ((uxx[i].re + uyy[i].re) >> STABILITY_PARAM);
                     // set n-1 -> n
                     self.psi_prev[i] = u_cen[i]
                 },
@@ -219,7 +219,7 @@ impl Waveable for QWave {
         self.norm = self.psi
             .iter()
             .fold(0.0, |acc, x| { 
-                let n = to_amp(x.re).powi(2) + to_amp(x.im).powi(2);
+                let n = Complex { re: to_amp(x.re), im: to_amp(x.im) }.norm_sqr();
                 acc + n
             });
     }
