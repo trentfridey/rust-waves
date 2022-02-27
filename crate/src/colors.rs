@@ -42,7 +42,7 @@ pub fn hsv_to_rgb(hue: f32, sat: f32, val: f32) -> (u32, u32, u32) {
     // assume H in [0,360], S in [0,1], V in [0,1]
     // we handle H < 0 because it often is from atan2, which is in [-pi, pi) 
     let hue_rect = if hue < 0.0 { hue + 360.0 } else { hue };
-    let chroma = sat * val;
+    let chroma = sat * val.sqrt();
     let hue_div = hue_rect / 60.0;
 
     let x = chroma * (1.0-((hue_div % 2.0) - 1.0).abs()); 
