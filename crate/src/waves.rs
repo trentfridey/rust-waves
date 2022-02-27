@@ -4,6 +4,7 @@ use utils::{Status, Arena, Rectified, from_amp, to_amp};
 use colors::{HexColor};
 
 pub const FORCE_DAMPING_BIT_SHIFT: u8 = 4;
+const STABILITY_PARAM: u8 = 6;
 
 pub struct CWave {
     u: Vec<i32>,
