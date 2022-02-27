@@ -1,4 +1,6 @@
 extern crate num;
+use std::f32::consts::PI;
+
 use num::complex::Complex;
 use utils::{Status, Arena, Rectified, from_amp, to_amp};
 use colors::{HexColor};
@@ -95,12 +97,16 @@ impl Waveable for QWave {
             (-xf * xf - yf * yf).exp()
         };
 
-        let sine = |x: i32, y: i32| -> f32 {
+        let wave_packet = |x: i32, y: i32| -> Complex<f32> {
             let xf = x as f32 / arena.width as f32;
-            let yf = y as f32 / arena.width as f32;
-            xf.sin() * yf.sin()
+            let yf = x as f32 / arena.height as f32;
+            return Complex { re: (16.0*xf).cos()*gauss(16*x, 10*y), im: (16.0*xf).sin()*gauss(16*x, 10*y) }
         };
-        let init_psi = |x, y| { gauss(4*x, 4*y) };
+        
+        // compute ψ
+        let init_psi = |x, y| -> Complex<f32> {
+             return wave_packet(x,y)
+        };
 
         let mut psi_0: Vec<Complex<i32>> = vec![Complex{re: 0, im: 0}; w*h];
         let n = (0..w*h).into_iter().fold(0.0, |acc, i| { 
