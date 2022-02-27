@@ -29,11 +29,33 @@ Front-end:
 
 ## Background:
 
+This code solves for $\psi$:
+
 $$
-\frac{\partial \psi}{\partial t} = \frac{i\hbar}{2m}\nabla^2 \psi
+\frac{\partial \psi(x,y,t)}{\partial t} = \frac{i\beta}{2}\nabla^2 \psi(x,y,t)
+\qquad \text{on} \, \Omega
+$$
+$$
+\Omega = \begin{cases}
+x \in [0,L]\\
+y \in [0,L]\\
+t \in [0, \infty)
+\end{cases}
 $$
 
-The code implements a finite difference method; for the Schrodinger simulation, it uses the centered-difference in time for stability reasons (see [[1]](#1) for background and an surprising derivation of the energy-time uncertainty relation!). Explicitly this is:
+with homogeneous Dirichlet boundary conditions
+
+$$
+\psi(x,y,t) = 0  \qquad x = 0, \, x = L, \, y = 0, \, y = L
+$$
+
+and initial condition:
+
+$$
+\psi(x,y,0) = f(x,y)
+$$
+
+It implements a finite difference algorithm with a centered difference in time for stability reasons (see [[1]](#1) for background). Explicitly this is:
 
 $$
 \frac{\partial \psi}{\partial t} \approx \frac{\psi^{n+1}_{j,k} - \psi^{n-1}_{j,k}}{2\Delta t}
@@ -55,11 +77,11 @@ $$
 The stability criteria is:
 
 $$
-\frac{\hbar}{m} = \beta \leq \frac{1}{2}\frac{\delta^2}{\Delta t} 
+\beta \leq \frac{1}{2}\frac{\delta^2}{\Delta t} 
 $$
 
 
-The update rule is:
+The update rule in $\Omega$ is:
 
 $$
 \psi^{n+1}_{j,k} = 
@@ -69,6 +91,32 @@ $$
     \psi^{n}_{j-\delta,k}+\psi^{n}_{j+\delta,k} +
     \psi^{n}_{j,k-\delta}+\psi^{n}_{j,k+\delta} -
     4\psi^{n}_{j,k}
+  \right]
+$$
+
+The boundary conditions imply:
+
+$$
+\left.\psi\right|_{\partial \Omega} = 0
+\implies
+\begin{cases}
+\psi^{n}_{0,k} = 0 \\
+\psi^{n}_{j,0} = 0 \\
+\psi^{n}_{L,k} = 0 \\
+\psi^{n}_{j,L} = 0 \\
+\end{cases}
+$$
+
+and the initial condition implies:
+
+$$
+\psi^{1}_{j,k} = 
+  \psi^{-1}_{j,k} - 
+  \frac{i\beta\Delta t}{\delta^2}
+  \left[
+    \psi^{0}_{j-\delta,k}+\psi^{0}_{j+\delta,k} +
+    \psi^{0}_{j,k-\delta}+\psi^{0}_{j,k+\delta} -
+    4\psi^{0}_{j,k}
   \right]
 $$
 
