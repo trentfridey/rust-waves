@@ -14,4 +14,4 @@ var e,t="/home/trent/trent/dev/rust-waves/node_modules/parcel-plugin-wasm.rs";co
 },{"fs":"sC8V"}],0:[function(require,module,exports) {
 var b=require("z1Am");b.register("wasm",require("ocK6"));b.load([["wave_equation_bg.7a488b96.wasm","EX1K"]]).then(function(){require("QvaY");});
 },{}]},{},[0], null)
-//# sourceMappingURL=rust-waves/js.0ebacf34.js.map
+//# sourceMappingURL=js.0ebacf34.js.map
