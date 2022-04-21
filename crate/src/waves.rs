@@ -6,7 +6,7 @@ use utils::{Status, Arena, Rectified, from_amp, to_amp};
 use colors::{HexColor};
 
 pub const FORCE_DAMPING_BIT_SHIFT: u8 = 4;
-const STABILITY_PARAM: u8 = 6;
+const STABILITY_PARAM: u8 = 0;
 
 pub struct CWave {
     u: Vec<i32>,
@@ -115,7 +115,7 @@ impl Waveable for QWave {
             acc + (amp.norm_sqr())
         });
         
-        // ψ0 = ψ / √[∑(|ψ|^2)] => ∑|ψ0|^2 = 1 
+        // normalize: ψ0 = ψ / √[∑(|ψ|^2)] => ∑|ψ0|^2 = 1 
         let mut psi_0: Vec<Complex<i32>> = vec![Complex{re: 0, im: 0}; w*h];
         for i in 0..w * h {
             match arena.status[i] {
@@ -190,6 +190,7 @@ impl Waveable for QWave {
         let mut uxx = vec![Complex{re: 0, im: 0}; w * h];
         let mut uyy = vec![Complex{re: 0, im: 0}; w * h];
 
+        // compute stencil values
         for i in 0..w * h {
                 match arena.status[i] {
                     Status::Default => {
@@ -204,6 +205,7 @@ impl Waveable for QWave {
                     _ => {}
             }
         }
+        // update step
         for i in 0..w * h {
             match arena.status[i] {
                 Status::Default => {
@@ -216,12 +218,21 @@ impl Waveable for QWave {
                 _ => {}
             }
         }
-        self.norm = self.psi
+        // compute norm
+        let norm = self.psi
             .iter()
             .fold(0.0, |acc, x| { 
                 let n = Complex { re: to_amp(x.re), im: to_amp(x.im) }.norm_sqr();
                 acc + n
             });
+        // normalize result
+        self.psi = self.psi.iter().map(|x| Complex {re: (to_amp(x.re) / norm.sqrt()) as i32, im: (to_amp(x.im) / norm.sqrt()) as i32}).collect();
+        self.norm = self.psi
+        .iter()
+        .fold(0.0, |acc, x| { 
+            let n = Complex { re: to_amp(x.re), im: to_amp(x.im) }.norm_sqr();
+            acc + n
+        });
     }
     fn render(&self, norm_only: bool) -> Vec<u32> {
         return self.psi.iter().map(|x| x.to_rgba(norm_only)).collect();

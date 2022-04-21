@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="utf-8">
-  <title>Hello wasm-pack!</title>
+  <title>Rust Wave simulator</title>
   <style>
     * {
       box-sizing: border-box;
@@ -27,15 +27,33 @@
       background-color: grey;
       border: 1px solid black;
       padding: 2px 5px;
-      display: inline;
-      float: right;
+      position: absolute;
+      top: 5px;
+      right: 5px;
       min-width: 75px;
+    }
+    .text {
+      color: white;
+      font-family: monospace;
+      text-align: justify;
+      width: 400px;
+      margin: 0 auto;
+      font-size: 18px;
+      margin-bottom: 10px;
+    }
+    a {
+      color: indianred;
     }
     canvas {
       margin: auto;
       border: 1px solid black;
     }
-
+    h2 {
+      text-align: center;
+      color:rgb(172, 172, 0);
+      font-size: 29px;
+      font-family: monospace;
+    }
     button {
       margin: 10px auto;
       height: 30px;
@@ -87,29 +105,38 @@
       width: 32px;
     }
   </style>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.css" integrity="sha384-KiWOvVjnN8qwAZbuQyWDIbfCLFhLXNETzBQjA/92pIowpC0d2O3nppDGQVgwd2nB" crossorigin="anonymous">
+
+    <!-- The loading of KaTeX is deferred to speed up page rendering -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js" integrity="sha384-0fdwu/T/EQMsQlrHCCHoH10pkPLlKA1jL5dFyUOvB3lfeT2540/2g6YgSi2BL14p" crossorigin="anonymous"></script>
+
+    <!-- To automatically render math in text elements, include the auto-render extension: -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/contrib/auto-render.min.js" integrity="sha384-+XBljXPPiv+OzfbB3cVmLHf4hdUFHlWNZN5spNQ7rmHTXpd7WvJum6fIACpNNfIR" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+  
 </head>
 
 <body>
+  <h2>Wave Simulator</h2>
+  <div class="text">
+    This is a simulation of the solution of the equation describing the propagation of waves (sound, water, etc):
+    $$\frac{\partial^2 \psi}{\partial t^2} -c^2 \nabla^2 \psi = 0 $$
+    It runs a <a href="https://en.wikipedia.org/wiki/Finite_difference_method">finite-difference</a> algorithm written in <a href="https://www.rust-lang.org/">Rust</a> and compiled to <a href="https://webassembly.org/">WebAssembly</a>
+  </div>
+ 
+  <div class="container">
+    <canvas id="canvas" width="400" height="400" style="width:400px;height:400px"></canvas>
+    <div class="btn-container">
+      <button type="button" id="start">Start</button>
+      <button type="button" id="step-btn">Step</button>
+    </div>
+  </div>
   <div class="fps-text">
     FPS: <span id="fps">0</span>
     <details>
       <summary>Debug</summary>
       <div>Frame number: <span id="frameCount">0</span></div>
-      <div>Norm: <span id="norm">1</span></div>
-      <div>Hovered Color: <span id="hoveredColor">""</span></div>
-      <button type="button" id="debug-btn">Plot Colors</button>
-      <canvas id="test-coloring" width="200" height="200"></canvas>
     </details>
-  </div>
-  <div class="container">
-    <canvas id="canvas" width="200" height="200" style="width:200px;height:200px"></canvas>
-    <div class="btn-container">
-      <button type="button" id="start">Start</button>
-      <button type="button" id="step-btn">Step</button>
-    </div>
-    <label>
-      <input type="checkbox" id="intensity"/> Intensity only
-    </label>
   </div>
   <noscript>This page contains webassembly and javascript content, please enable javascript in your browser.</noscript>
   <script src="js/index.js"></script>

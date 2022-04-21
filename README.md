@@ -33,20 +33,30 @@ This code solves for $\psi$:
 
 $$
 \frac{\partial \psi(x,y,t)}{\partial t} = \frac{i\beta}{2}\nabla^2 \psi(x,y,t)
-\qquad \text{on} \, \Omega
+\qquad \text{on} \, \Omega \times T
 $$
 $$
 \Omega = \begin{cases}
 x \in [0,L]\\
 y \in [0,L]\\
-t \in [0, \infty)
 \end{cases}
+$$
+$$
+T = [0, \infty)
 $$
 
 with homogeneous Dirichlet boundary conditions
 
 $$
-\psi(x,y,t) = 0  \qquad x = 0, \, x = L, \, y = 0, \, y = L
+\psi|_{\partial \Omega} = 0  
+$$
+$$
+\partial \Omega = \begin{cases}
+x = 0 \\
+x = L \\ 
+y = 0 \\
+y = L
+\end{cases}
 $$
 
 and initial condition:
@@ -55,7 +65,16 @@ $$
 \psi(x,y,0) = f(x,y)
 $$
 
-It implements a finite difference algorithm with a centered difference in time for stability reasons (see [[1]](#1) for background). Explicitly this is:
+### Methods
+
+It implements a finite difference algorithm with a centered difference in time for stability reasons (see [[1]](#1) for background).
+We discretize on a spatial grid of spacing $\delta$, and in time by steps of size $\Delta t$: 
+
+$$
+\psi(j\delta, k\delta, n\Delta t) = \psi^n_{j,k}
+$$
+
+We approximately the derivatives thusly:
 
 $$
 \frac{\partial \psi}{\partial t} \approx \frac{\psi^{n+1}_{j,k} - \psi^{n-1}_{j,k}}{2\Delta t}
@@ -94,6 +113,21 @@ $$
   \right]
 $$
 
+or, by inserting the stability criterion:
+
+$$
+\psi^{n+1}_{j,k} = 
+  \psi^{n-1}_{j,k} - 
+  iC
+  \left[
+    \psi^{n}_{j-\delta,k}+\psi^{n}_{j+\delta,k} +
+    \psi^{n}_{j,k-\delta}+\psi^{n}_{j,k+\delta} -
+    4\psi^{n}_{j,k}
+  \right]
+$$
+
+where $C \leq \frac 12$
+
 The boundary conditions imply:
 
 $$
@@ -112,13 +146,15 @@ and the initial condition implies:
 $$
 \psi^{1}_{j,k} = 
   \psi^{-1}_{j,k} - 
-  \frac{i\beta\Delta t}{\delta^2}
+  iC
   \left[
     \psi^{0}_{j-\delta,k}+\psi^{0}_{j+\delta,k} +
     \psi^{0}_{j,k-\delta}+\psi^{0}_{j,k+\delta} -
     4\psi^{0}_{j,k}
   \right]
 $$
+
+Since $\psi^{-1}_{j,k}$ is undefined by the initial conditions, we need to solve for it in another way.
 
 ## References
 

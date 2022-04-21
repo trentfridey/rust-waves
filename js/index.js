@@ -9,28 +9,23 @@ let ctx = canvas.getContext('2d');
 const stepBtn = document.getElementById('step-btn')
 stepBtn.addEventListener('click', step)
 
-let viewColors = true
-const intensityBtn = document.getElementById('intensity')
-intensityBtn.addEventListener('click', () => { viewColors = !viewColors })
 
 // Debug tools --------------------------------------------
 
 const FPSCounter = document.getElementById('fps')
 const frameCounter = document.getElementById('frameCount')
 
-const norm = document.getElementById('norm');
-
 const debug = () => {
-    let debugCanvas = document.getElementById('test-coloring');
-    let debugCtx = debugCanvas.getContext('2d');
-    const testPtr = rustCanvas.test();
-    const testArray = new Uint8ClampedArray(rust.wasm.memory.buffer, testPtr, 4 * height * width);
-    let testData = new ImageData(testArray, width, height);
-    debugCtx.putImageData(testData, 0, 0);
+    // let debugCanvas = document.getElementById('test-coloring');
+    // let debugCtx = debugCanvas.getContext('2d');
+    // const testPtr = rustCanvas.test();
+    // const testArray = new Uint8ClampedArray(rust.wasm.memory.buffer, testPtr, 4 * height * width);
+    // let testData = new ImageData(testArray, width, height);
+    // debugCtx.putImageData(testData, 0, 0);
 }
 
-const debugBtn = document.getElementById('debug-btn')
-debugBtn.addEventListener('click', debug)
+// const debugBtn = document.getElementById('debug-btn')
+// debugBtn.addEventListener('click', debug)
 
 
 const hoveredColor = document.getElementById('hoveredColor');
@@ -70,10 +65,10 @@ canvas.addEventListener('mousemove', function(evt) {
 // ---------------------------------------------------------------
 
 function step () {
-    rustCanvas.step(0, !viewColors);
+    rustCanvas.step(0, false);
     frameCount++
     frameCounter.innerText = frameCount
-    norm.innerText = rustCanvas.norm();
+    // norm.innerText = rustCanvas.norm();
     const imagePtr = rustCanvas.image();
     const imageArray = new Uint8ClampedArray(rust.wasm.memory.buffer, imagePtr, 4 * height * width);
     let imageData = new ImageData(imageArray, width, height);

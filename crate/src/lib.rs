@@ -22,7 +22,7 @@ extern crate web_sys;
 pub struct Canvas {
     arena: Arena,
     image: Vec<u32>,
-    wave: QWave,
+    wave: CWave,
     test: Vec<u32>,
 }
 
@@ -33,7 +33,7 @@ impl Canvas {
         console_error_panic_hook::set_once();
         let arena = Arena::new(width, height);
         let image = vec![0xFF000000; (width*height) as usize];
-        let wave: QWave = QWave::new(&arena);
+        let wave: CWave = CWave::new(&arena);
         let test: Vec<u32> = gen_test_pattern(arena.width, arena.height);
         
         return Canvas {
@@ -56,10 +56,10 @@ impl Canvas {
     pub fn test(&self) -> *const u32 {
         self.test.as_ptr()
     }
-    #[no_mangle]
-    pub fn norm(&self) -> f32 {
-        self.wave.norm
-    }
+    // #[no_mangle]
+    // pub fn norm(&self) -> f32 {
+    //     self.wave.norm
+    // }
     #[no_mangle]
     pub fn width(&self) -> u32 {
         self.arena.width
