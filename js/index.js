@@ -15,52 +15,6 @@ stepBtn.addEventListener('click', step)
 const FPSCounter = document.getElementById('fps')
 const frameCounter = document.getElementById('frameCount')
 
-const debug = () => {
-    // let debugCanvas = document.getElementById('test-coloring');
-    // let debugCtx = debugCanvas.getContext('2d');
-    // const testPtr = rustCanvas.test();
-    // const testArray = new Uint8ClampedArray(rust.wasm.memory.buffer, testPtr, 4 * height * width);
-    // let testData = new ImageData(testArray, width, height);
-    // debugCtx.putImageData(testData, 0, 0);
-}
-
-// const debugBtn = document.getElementById('debug-btn')
-// debugBtn.addEventListener('click', debug)
-
-
-const hoveredColor = document.getElementById('hoveredColor');
-
-function pick(event, destination) {
-    const x = event.layerX - event.target.offsetLeft;
-    const y = event.layerY - event.target.offsetTop;
-    const pixel = ctx.getImageData(x, y, 1, 1);
-    const data = pixel.data;
-    const [r,g,b,a] = data
-    // console.log(event)
-
-    const rgba_to_hue = (args) => {
-        const normalize = v => v / 255
-        const normalized = Array.from(args).map(v => normalize(v))
-        const xMax = Math.max(...normalized)
-        const xMin = Math.min(...normalized)
-        const [r,g,b] = normalized
-        const chroma = xMax - xMin
-        if (chroma === 0) return 0
-        if (xMax === r) return 60*(g-b)/chroma
-        if (xMax === g) return 60*(2 + (b-r)/chroma)
-        if (xMax === b) return 60*(4 + (r-g)/chroma)
-    }
-
-    const rgba = `rgba(${r}, ${g}, ${b}, ${a / 255})`;
-    destination.style.background = rgba;
-    destination.textContent = `${rgba_to_hue(data.slice(0,3)).toFixed(0)} degrees`;
-
-    return rgba;
-}
-
-canvas.addEventListener('mousemove', function(evt) {
-    pick(evt, hoveredColor)
-})
 
 // ---------------------------------------------------------------
 
